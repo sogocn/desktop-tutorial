@@ -89,8 +89,15 @@ WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload
 systemctl enable --now familyquest-api
-sleep 2
-curl -fsS http://127.0.0.1:$PORT/api/health || { echo "API 健康检查失败"; systemctl status familyquest-api; exit 1; }
+# tsx 冷启动（即时转译）需要几秒，做重试避免误判
+health_ok=0
+for i in 1 2 3 4 5 6 7 8; do
+  if curl -fsS "http://127.0.0.1:$PORT/api/health"; then health_ok=1; break; fi
+  sleep 2
+done
+if [ "$health_ok" -ne 1 ]; then
+  echo "API 健康检查失败（已重试）"; systemctl status familyquest-api --no-pager; exit 1
+fi
 
 # ---- 9. nginx ----
 sed "s#/var/www/familyquest/dist#$APP_HOME/dist#g" "$REPO_DIR"/deploy/nginx.conf > /etc/nginx/conf.d/familyquest.conf
