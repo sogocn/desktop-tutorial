@@ -18,7 +18,7 @@ const AVATARS = ['🙂', '👦', '👧', '🐱', '🐶', '🦊', '🐼', '🦁',
 function friendlyErr(e: BackendError): string {
   switch (e.code) {
     case 'INVITE_NOT_FOUND':
-      return '邀请码不存在。注意：本应用数据保存在本机浏览器里，邀请码只对创建它的那个浏览器有效；换浏览器/隐身窗口/其他设备看不到。请在创建家庭的同一浏览器里，先到「我的」页点「退出这个身份」，再回来输入邀请码加入'
+      return '邀请码不存在。请确认输入正确，或让家长在「我的 → 家庭成员」里重新查看邀请码'
     case 'INVITE_REVOKED':
       return '这个邀请码已作废，请让家长重新生成'
     case 'INVITE_EXPIRED':
@@ -26,7 +26,7 @@ function friendlyErr(e: BackendError): string {
     case 'INVITE_USED_UP':
       return '这个邀请码已用完，请让家长重新生成'
     case 'ALREADY_IN_FAMILY':
-      return '这个身份已经在家庭里了。请到「我的」页点「退出这个身份」，再重新输入邀请码加入（本应用数据在本机浏览器，不支持跨浏览器/隐身窗口共享家庭）'
+      return '这个身份已经在家庭里了。请到「我的」页点「退出这个身份」，再重新输入邀请码加入'
     case 'NO_AUTH':
       return '身份丢失，请刷新页面后重试'
     case 'NICKNAME_REQUIRED':
@@ -38,7 +38,7 @@ function friendlyErr(e: BackendError): string {
   }
 }
 
-type Step = 'welcome' | 'create' | 'join' | 'done'
+type Step = 'welcome' | 'create' | 'join' | 'login' | 'done'
 
 export default function Onboarding() {
   const [step, setStep] = useState<Step>('welcome')
@@ -57,6 +57,7 @@ export default function Onboarding() {
         />
       )}
       {step === 'join' && <JoinFamily onBack={() => setStep('welcome')} />}
+      {step === 'login' && <Login onBack={() => setStep('welcome')} />}
       {step === 'done' && codes && <ShowCodes codes={codes} />}
     </div>
   )
@@ -115,13 +116,16 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
         <Button size="lg" variant="outline" className="w-full" onClick={() => onPick('join')}>
           我有邀请码
         </Button>
+        <Button size="lg" variant="ghost" className="w-full" onClick={() => onPick('login')}>
+          已有账号，登录
+        </Button>
       </div>
 
       {knownUsers.length > 0 && (
         <section className="mt-8">
-          <h2 className="px-1 text-sm font-semibold text-slate-900">本机身份</h2>
+          <h2 className="px-1 text-sm font-semibold text-slate-900">本机已登录账号</h2>
           <p className="mb-2 px-1 text-xs leading-relaxed text-slate-400">
-            这些身份的数据都存在这台设备上，点一下就能回来，不需要密码。
+            这些是本机登录过的账号，点一下即可切换，无需重新输入用户名和密码。
           </p>
           <div className="space-y-2">
             {knownUsers.map((u) => (
@@ -172,8 +176,7 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
       {err && <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{err}</p>}
 
       <p className="mt-8 text-center text-xs leading-relaxed text-slate-400">
-        数据全部存在这台设备上，不上传任何服务器。退出身份后，也可以在上面的「本机身份」
-        里一键回到原来的身份。
+        数据保存在服务器，用用户名 + PIN 可在任意设备登录同一份家庭数据。
       </p>
     </div>
   )
@@ -221,13 +224,15 @@ function CreateFamily({
   const addKnownUser = useSession((s) => s.addKnownUser)
   const [familyName, setFamilyName] = useState('')
   const [nickname, setNickname] = useState('')
+  const [username, setUsername] = useState('')
   const [avatar, setAvatar] = useState('🙂')
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  const pinOk = pin === '' || /^\d{4}$/.test(pin)
-  const canSubmit = familyName.trim() && nickname.trim() && pinOk && !busy
+  const pinOk = /^\d{4}$/.test(pin)
+  const usernameOk = username.trim().length > 0
+  const canSubmit = familyName.trim() && nickname.trim() && usernameOk && pinOk && !busy
 
   async function submit() {
     setBusy(true)
@@ -238,8 +243,9 @@ function CreateFamily({
       const r = await apiFns.createFamily({
         familyName: familyName.trim(),
         nickname: nickname.trim(),
+        username: username.trim(),
+        pin,
         avatar,
-        pin: pin || null,
       })
       // 记录本机身份：创建家庭的家长，退出后可一键恢复
       addKnownUser({
@@ -248,6 +254,7 @@ function CreateFamily({
         role: 'parent',
         avatarEmoji: avatar,
         familyName: familyName.trim(),
+        username: username.trim(),
       })
       // 注意：这里【不能】invalidate bootstrap —— 否则 bootstrap 立刻重查变成
       // in_family=true，App 根组件会抢先把 Onboarding 整个卸载，用户就看不到
@@ -283,13 +290,23 @@ function CreateFamily({
           />
         </Field>
 
+        <Field label="用户名" hint="其他设备上用它 + PIN 登录你的账号">
+          <Input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="例如 zhang_mama"
+            maxLength={30}
+            autoCapitalize="none"
+          />
+        </Field>
+
         <Field label="选个头像">
           <AvatarPicker value={avatar} onChange={setAvatar} />
         </Field>
 
         <Field
-          label="家长 PIN（4 位数字，可跳过）"
-          hint="改任务、审批兑换时需要输入。孩子拿到手机也改不了规则。"
+          label="家长 PIN（4 位数字，必填）"
+          hint="用于登录和审批兑换，孩子拿到手机也改不了规则。"
         >
           <Input
             value={pin}
@@ -315,10 +332,15 @@ function JoinFamily({ onBack }: { onBack: () => void }) {
   const ensureUserId = useSession((s) => s.ensureUserId)
   const addKnownUser = useSession((s) => s.addKnownUser)
   const [code, setCode] = useState('')
+  const [username, setUsername] = useState('')
+  const [pin, setPin] = useState('')
   const [nickname, setNickname] = useState('')
   const [avatar, setAvatar] = useState('👦')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  const pinOk = /^\d{4}$/.test(pin)
+  const usernameOk = username.trim().length > 0
 
   async function submit() {
     setBusy(true)
@@ -326,7 +348,13 @@ function JoinFamily({ onBack }: { onBack: () => void }) {
     try {
       const uid = ensureUserId()
       await apiFns.setIdentity(uid)
-      const r = await apiFns.joinFamily({ code, nickname: nickname.trim() || undefined, avatar })
+      const r = await apiFns.joinFamily({
+        code,
+        username: username.trim(),
+        pin,
+        nickname: nickname.trim() || undefined,
+        avatar,
+      })
       // joinFamily 不返回 user_id —— 当前身份的 userId 就是 ensureUserId 生成的 uid。
       // 昵称留空时后端会用家长代建的名字，这里先占位，主壳 bootstrap 兜底会纠正。
       addKnownUser({
@@ -368,14 +396,106 @@ function JoinFamily({ onBack }: { onBack: () => void }) {
           />
         </Field>
 
+        <Field label="用户名" hint="其他设备上用它 + PIN 登录你的账号">
+          <Input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="例如 xiaoming"
+            maxLength={30}
+            autoCapitalize="none"
+          />
+        </Field>
+
+        <Field label="PIN（4 位数字）" hint="家长给你设置的，或你自己设的登录密码">
+          <Input
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            inputMode="numeric"
+            placeholder="••••"
+            className="text-center text-xl tracking-[0.4em]"
+          />
+        </Field>
+
         <Field label="选个头像">
           <AvatarPicker value={avatar} onChange={setAvatar} />
         </Field>
 
         {err && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{err}</p>}
 
-        <Button size="lg" className="w-full" disabled={code.length < 4 || busy} onClick={submit}>
+        <Button
+          size="lg"
+          className="w-full"
+          disabled={code.length < 4 || !usernameOk || !pinOk || busy}
+          onClick={submit}
+        >
           {busy ? '加入中…' : '加入'}
+        </Button>
+      </div>
+    </>
+  )
+}
+
+function Login({ onBack }: { onBack: () => void }) {
+  const qc = useQueryClient()
+  const setUserId = useSession((s) => s.setUserId)
+  const addKnownUser = useSession((s) => s.addKnownUser)
+  const [username, setUsername] = useState('')
+  const [pin, setPin] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function submit() {
+    setBusy(true)
+    setErr('')
+    try {
+      const r = await apiFns.login(username.trim(), pin)
+      setUserId(r.userId)
+      addKnownUser({
+        userId: r.userId,
+        nickname: r.nickname,
+        role: r.role === 'parent' ? 'parent' : 'child',
+        token: r.token,
+      })
+      await apiFns.setIdentity(r.userId)
+      // 强制重查 bootstrap（带上新 JWT），身份进来后 App 自动切进主壳
+      await qc.invalidateQueries({ queryKey: qk.bootstrap })
+    } catch (e) {
+      setErr(e instanceof BackendError ? e.message : String(e))
+      setBusy(false)
+    }
+  }
+
+  const pinOk = /^\d{4}$/.test(pin)
+  const canSubmit = username.trim().length > 0 && pinOk && !busy
+
+  return (
+    <>
+      <Header title="登录" onBack={onBack} />
+      <div className="space-y-5 py-2">
+        <Field label="用户名">
+          <Input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="用户名"
+            maxLength={30}
+            autoCapitalize="none"
+          />
+        </Field>
+
+        <Field label="PIN（4 位数字）" hint="你创建/加入家庭时设置的密码">
+          <Input
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            inputMode="numeric"
+            placeholder="••••"
+            className="text-center text-xl tracking-[0.4em]"
+          />
+        </Field>
+
+        {err && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{err}</p>}
+
+        <Button size="lg" className="w-full" disabled={!canSubmit} onClick={submit}>
+          {busy ? '登录中…' : '登录'}
         </Button>
       </div>
     </>

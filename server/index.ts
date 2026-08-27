@@ -142,6 +142,31 @@ app.post('/api/auth/token', async (req: Request, res: Response) => {
   }
 })
 
+// ---------------------------------------------------------------------------
+// 用户名 + PIN 登录（跨设备）。校验通过返回该成员的 JWT，前端据此在任何设备
+// 拿到同一份家庭数据。错误统一成 401，不暴露用户名是否存在。
+// ---------------------------------------------------------------------------
+app.post('/api/auth/login', async (req: Request, res: Response) => {
+  const { username, pin } = req.body as { username?: string; pin?: string }
+  if (!username || !pin) return res.status(400).json({ error: '用户名 / PIN 必填' })
+
+  try {
+    const result = await runAsService(async (c) => {
+      const r = await c.query('select app.login_by_pin($1, $2) as result', [username, pin])
+      return r.rows[0]?.result as { user_id: string; nickname: string; role: string }
+    })
+    return res.json({
+      userId: result.user_id,
+      token: signToken(result.user_id),
+      nickname: result.nickname,
+      role: result.role,
+    })
+  } catch (e) {
+    // 服务端函数抛 'LOGIN_FAIL: ...'，统一回 401，不泄露细节
+    return res.status(401).json({ error: '用户名或 PIN 不正确' })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`[familyquest] API listening on :${PORT}`)
 })

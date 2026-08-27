@@ -67,7 +67,7 @@ function BootSplash() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
       <div className="animate-pop-in text-6xl">🏡</div>
-      <Spinner label="正在准备本地数据库" />
+      <Spinner label="正在连接服务器" />
     </div>
   )
 }

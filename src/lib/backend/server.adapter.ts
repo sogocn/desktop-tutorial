@@ -41,7 +41,13 @@ export class ServerBackend implements BackendClient {
       this.activeToken = null
       return
     }
-    // 尝试换 JWT；换不到（成员还没建）就留空，引导类 RPC 会用临时身份头
+    // 已知身份里若已存有登录拿到的 JWT，直接复用，省一次换 token 请求
+    const u = useSession.getState().knownUsers.find((k) => k.userId === userId)
+    if (u?.token) {
+      this.activeToken = u.token
+      return
+    }
+    // 否则尝试用 loginKey 换 JWT；换不到（成员还没建）就留空，引导类 RPC 会用临时身份头
     const cached = this.tokenCache.get(userId)
     if (cached) {
       this.activeToken = cached
@@ -50,6 +56,20 @@ export class ServerBackend implements BackendClient {
     const token = await this.fetchToken(userId)
     this.activeToken = token
     if (token) this.tokenCache.set(userId, token)
+  }
+
+  async login(username: string, pin: string) {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username, pin }),
+    })
+    if (!res.ok) throw new BackendError((await this.err(res)) || '登录失败')
+    const data = (await res.json()) as { userId: string; token: string; nickname: string; role: string }
+    this.activeUserId = data.userId
+    this.activeToken = data.token
+    this.tokenCache.set(data.userId, data.token)
+    return data
   }
 
   async query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {

@@ -102,27 +102,29 @@ export default function MePage() {
         <section>
           <h2 className="mb-2 px-1 text-sm font-semibold text-slate-900">数据</h2>
           <div className="space-y-2">
-            <RowButton
-              icon={<Download size={18} />}
-              label="导出备份"
-              hint="下载整个数据库文件，换设备时可以带走"
-              onClick={async () => {
-                const be = await getBackend()
-                const blob = await be.dump()
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `familyquest-${new Date().toISOString().slice(0, 10)}.tar.gz`
-                a.click()
-                URL.revokeObjectURL(url)
-              }}
-            />
+            {import.meta.env.VITE_BACKEND !== 'server' && (
+              <RowButton
+                icon={<Download size={18} />}
+                label="导出备份"
+                hint="下载整个数据库文件，换设备时可以带走"
+                onClick={async () => {
+                  const be = await getBackend()
+                  const blob = await be.dump()
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `familyquest-${new Date().toISOString().slice(0, 10)}.tar.gz`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                }}
+              />
+            )}
             <RowButton
               icon={<LogOut size={18} />}
               label="退出这个身份"
-              hint="数据留在本机，重新输邀请码可以再进来"
+              hint="数据在服务器上，退出后用用户名 + PIN 可随时登录回来"
               onClick={() => {
-                if (!confirm('退出后需要重新输入邀请码才能回到这个家庭，确定吗？')) return
+                if (!confirm('退出后需要重新输入用户名 + PIN 才能回到这个家庭，确定吗？')) return
                 signOut()
                 // 用 invalidateQueries 而不是 qc.clear()：clear() 会把 bootstrap
                 // 查询从缓存里整个删掉，而 React Query v5 里已挂载的 observer
@@ -132,28 +134,30 @@ export default function MePage() {
                 api.setIdentity(null).then(() => qc.invalidateQueries())
               }}
             />
-            <RowButton
-              icon={<Trash2 size={18} />}
-              label="清空所有数据"
-              hint="不可恢复。建议先导出备份"
-              danger
-              onClick={async () => {
-                if (!confirm('所有任务、积分、勋章都会被永久删除，确定吗？')) return
-                if (!confirm('真的确定？这个操作没法撤销。')) return
-                const be = await getBackend()
-                await be.reset()
-                // 数据库都清了，本机身份列表里的旧身份指向空数据，一并清掉，
-                // 否则欢迎页会残留身份卡，点恢复只会得到"数据已被清空"
-                removeAllKnownUsers()
-                signOut()
-                location.reload()
-              }}
-            />
+            {import.meta.env.VITE_BACKEND !== 'server' && (
+              <RowButton
+                icon={<Trash2 size={18} />}
+                label="清空所有数据"
+                hint="不可恢复。建议先导出备份"
+                danger
+                onClick={async () => {
+                  if (!confirm('所有任务、积分、勋章都会被永久删除，确定吗？')) return
+                  if (!confirm('真的确定？这个操作没法撤销。')) return
+                  const be = await getBackend()
+                  await be.reset()
+                  // 数据库都清了，本机身份列表里的旧身份指向空数据，一并清掉，
+                  // 否则欢迎页会残留身份卡，点恢复只会得到"数据已被清空"
+                  removeAllKnownUsers()
+                  signOut()
+                  location.reload()
+                }}
+              />
+            )}
           </div>
         </section>
 
         <p className="pt-2 text-center text-xs text-slate-400">
-          数据存在这台设备的浏览器里，不会上传
+          数据保存在服务器，用用户名 + PIN 可在任意设备登录同一份家庭数据
         </p>
       </div>
 

@@ -48,8 +48,12 @@ export interface KnownUser {
   role: 'parent' | 'child'
   avatarEmoji?: string
   familyName?: string
+  /** 自托管后端模式下的登录用户名（创建/加入时设置，用于跨设备登录）。 */
+  username?: string
   /** 自托管后端模式下的登录密钥（与 userId 成对，跨设备迁移身份用）。本地模式不使用。 */
   loginKey?: string
+  /** 自托管后端模式下用户名+PIN 登录拿到的 JWT。存在则免密复用，无需再换 token。 */
+  token?: string
 }
 
 /** 生成一个高熵登录密钥（32 字节十六进制）。 */

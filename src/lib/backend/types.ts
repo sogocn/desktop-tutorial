@@ -4,6 +4,8 @@ export interface BackendClient {
   ready(): Promise<void>
   /** 切换当前身份（对应云端 JWT 的 sub）。切完之后 RLS 看到的就是这个人。 */
   setIdentity(userId: string | null): Promise<void>
+  /** 用户名 + PIN 登录，返回该成员的 userId / token / nickname / role */
+  login(username: string, pin: string): Promise<{ userId: string; token: string; nickname: string; role: string }>
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>
   /** 调 app schema 下的函数，参数用具名写法，和 PostgREST 的 RPC 语义一致 */
   rpc<T = unknown>(fn: string, args?: Record<string, unknown>): Promise<T>

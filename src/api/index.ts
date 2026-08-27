@@ -36,6 +36,16 @@ export async function setIdentity(userId: string | null) {
   await be.setIdentity(userId)
 }
 
+/** 用户名 + PIN 登录。返回该成员的 userId / token / nickname / role */
+export interface LoginResult {
+  userId: string
+  token: string
+  nickname: string
+  role: 'parent' | 'child'
+}
+export const login = (username: string, pin: string) =>
+  getBackend().then((be) => be.login(username.trim(), pin))
+
 // ---------------------------------------------------------------------------
 // 启动 / 家庭
 // ---------------------------------------------------------------------------
@@ -44,8 +54,9 @@ export const bootstrap = () => rpc<BootstrapState>('bootstrap_state')
 export const createFamily = (p: {
   familyName: string
   nickname: string
+  username: string
+  pin: string
   avatar?: string
-  pin?: string | null
   timezone?: string
 }) =>
   rpc<{
@@ -57,17 +68,29 @@ export const createFamily = (p: {
   }>('create_family', {
     p_family_name: p.familyName,
     p_nickname: p.nickname,
+    p_username: p.username.trim().toLowerCase(),
+    p_pin: p.pin,
     p_avatar: p.avatar ?? '🙂',
-    p_pin: p.pin ?? null,
     p_timezone: p.timezone ?? 'Asia/Shanghai',
   })
 
-export const joinFamily = (p: { code: string; nickname?: string; avatar?: string }) =>
-  rpc<{ member_id: string; family_id: string; role: 'parent' | 'child' }>('join_family', {
-    p_code: p.code.trim().toUpperCase(),
-    p_nickname: p.nickname ?? null,
-    p_avatar: p.avatar ?? '🙂',
-  })
+export const joinFamily = (p: {
+  code: string
+  username: string
+  pin: string
+  nickname?: string
+  avatar?: string
+}) =>
+  rpc<{ member_id: string; family_id: string; role: 'parent' | 'child'; username?: string }>(
+    'join_family',
+    {
+      p_code: p.code.trim().toUpperCase(),
+      p_username: p.username.trim().toLowerCase(),
+      p_pin: p.pin,
+      p_nickname: p.nickname ?? null,
+      p_avatar: p.avatar ?? '🙂',
+    },
+  )
 
 export const addMember = (p: {
   nickname: string

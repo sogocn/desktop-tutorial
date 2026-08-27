@@ -102,6 +102,13 @@ export class PGliteBackend implements BackendClient {
     if (this.pg) await this.applyIdentity()
   }
 
+  async login(
+    _username: string,
+    _pin: string,
+  ): Promise<{ userId: string; token: string; nickname: string; role: string }> {
+    throw new BackendError('本地模式不支持用户名登录，请使用服务器模式')
+  }
+
   async query<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
     await this.ready()
     try {
