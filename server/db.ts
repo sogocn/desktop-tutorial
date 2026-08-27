@@ -23,9 +23,10 @@ export async function runAsMember<T>(
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    const role = sub ? 'authenticated' : 'anon'
-    // 始终写入 request.jwt.claims：游客（sub 为 null）也给出明确 role=anon，
-    // 这样 auth.uid() 读到的是干净的 null，而不是缺省值导致的行为漂移。
+    // 游客与已登录成员都用 authenticated 角色：它拥有 app schema 的 EXECUTE/RLS 权限。
+    // 区别只在 request.jwt.claims.sub 是否有值 —— RLS 据此过滤数据。
+    // （anon 角色没有 app 函数的 EXECUTE 权限，不能用来跑 bootstrap_state 等函数。）
+    const role = 'authenticated'
     await client.query('SELECT set_config($1, $2, true)', [
       'request.jwt.claims',
       JSON.stringify({ sub: sub ?? null, role }),

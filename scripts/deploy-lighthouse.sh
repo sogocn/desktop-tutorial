@@ -30,9 +30,11 @@ echo "==> node $(node -v)"
 # ---- 3. 应用用户 + 目录 ----
 id -u "$APP_USER" &>/dev/null || useradd -r -m -s /usr/sbin/nologin "$APP_USER"
 mkdir -p "$APP_HOME"
-cp -r "$REPO_DIR"/dist "$APP_HOME"/dist
-cp -r "$REPO_DIR"/server "$APP_HOME"/server
-cp -r "$REPO_DIR"/db "$APP_HOME"/db
+# 用 -rT 把源目录内容覆盖进已存在的目标目录（保留 node_modules 等目标独有文件），
+# 避免 cp -r src dst 在 dst 已存在时嵌套成 dst/src 导致更新不生效。
+cp -rT "$REPO_DIR"/dist "$APP_HOME"/dist
+cp -rT "$REPO_DIR"/server "$APP_HOME"/server
+cp -rT "$REPO_DIR"/db "$APP_HOME"/db
 chown -R "$APP_USER":"$APP_USER" "$APP_HOME"
 
 # ---- 4. Postgres：建库 + 用户 ----
