@@ -41,9 +41,9 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
 do \$\$
 begin
   if not exists (select 1 from pg_roles where rolname='$PG_USER') then
-    create user $PG_USER with password '$PG_PASS' createrole;
+    create user $PG_USER with password '$PG_PASS' createrole bypassrls;
   else
-    alter user $PG_USER with password '$PG_PASS' createrole;
+    alter user $PG_USER with password '$PG_PASS' createrole bypassrls;
   end if;
 end \$\$;
 SQL
