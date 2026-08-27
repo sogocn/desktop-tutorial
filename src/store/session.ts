@@ -7,8 +7,34 @@ import type { Ymd } from '@/lib/date'
  * 它就是 auth.uid() 看到的东西 —— 换句话说，清掉它 = 换了个人。
  * 上云后这里替换成真实 token 的 sub，其余代码一行不动。
  */
+/**
+ * 生成 v4 UUID。
+ * 注意：crypto.randomUUID() 只在「安全上下文」(HTTPS / localhost) 可用。
+ * 项目以 HTTP（http://<公网IP>）部署时该方法是 undefined，会抛
+ * "crypto.randomUUID is not a function"。这里做兜底——非安全上下文改用
+ * getRandomValues 手工拼一个 v4 UUID（getRandomValues 任何上下文都可用）。
+ */
 function newUserId(): string {
-  return crypto.randomUUID()
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // 兜底：用 16 字节随机数构造标准 v4 UUID
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  bytes[6] = (bytes[6] & 0x0f) | 0x40 // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80 // variant 10xx
+  const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0'))
+  return (
+    hex.slice(0, 4).join('') +
+    '-' +
+    hex.slice(4, 6).join('') +
+    '-' +
+    hex.slice(6, 8).join('') +
+    '-' +
+    hex.slice(8, 10).join('') +
+    '-' +
+    hex.slice(10, 16).join('')
+  )
 }
 
 /**
