@@ -79,6 +79,8 @@ interface SessionState {
   knownUsers: KnownUser[]
 
   ensureUserId: () => string
+  /** 身份还没有登录密钥就补一把（旧版本升级上来的本机身份），随身份持久化 */
+  ensureLoginKey: (userId: string) => string | null
   setUserId: (id: string | null) => void
   setParentToken: (token: string | null, expiresAt?: string | number | null) => void
   /** 令牌还有效吗。过期的直接当没有 */
@@ -115,6 +117,25 @@ export const useSession = create<SessionState>()(
         // 自托管后端：每个身份配一把登录密钥，随身份一起持久化，供跨设备迁移
         get().addKnownUser({ userId: id, nickname: '我', role: 'parent', loginKey: newLoginKey() })
         return id
+      },
+
+      /**
+       * 自托管后端引导流程（create_family / join_family）的临时身份头需要 loginKey。
+       * 旧版本部署时期持久化下来的身份没有这个字段 —— 缺着去创建家庭，
+       * 服务端会拿不到有效密钥、之后永远换不到 JWT（界面卡在引导页）。
+       * 在创建/加入前调用本方法补齐。
+       */
+      ensureLoginKey: (userId) => {
+        const u = get().knownUsers.find((k) => k.userId === userId)
+        if (u?.loginKey) return u.loginKey
+        const key = newLoginKey()
+        get().addKnownUser({
+          userId,
+          nickname: u?.nickname || '我',
+          role: u?.role ?? 'parent',
+          loginKey: key,
+        })
+        return key
       },
 
       setUserId: (id) => set({ userId: id }),

@@ -5,6 +5,7 @@ import * as apiFns from '@/api'
 import { Button, Card, Field, Input } from '@/components/ui'
 import { BackendError } from '@/lib/backend/types'
 import { celebrate } from '@/lib/celebrate'
+import { copyText } from '@/lib/clipboard'
 import { cn } from '@/lib/cn'
 import { useSession, type KnownUser } from '@/store/session'
 import { qk } from '@/hooks/useApp'
@@ -221,6 +222,7 @@ function CreateFamily({
   onDone: (c: { child: string; parent: string }) => void
 }) {
   const ensureUserId = useSession((s) => s.ensureUserId)
+  const ensureLoginKey = useSession((s) => s.ensureLoginKey)
   const addKnownUser = useSession((s) => s.addKnownUser)
   const [familyName, setFamilyName] = useState('')
   const [nickname, setNickname] = useState('')
@@ -239,6 +241,9 @@ function CreateFamily({
     setErr('')
     try {
       const uid = ensureUserId()
+      // 旧版本升级上来的本机身份可能没有 loginKey（引导 RPC 的临时身份头需要它），
+      // 缺了的话服务端换不到 JWT，创建完会卡在引导页 —— 先补上。
+      ensureLoginKey(uid)
       await apiFns.setIdentity(uid)
       const r = await apiFns.createFamily({
         familyName: familyName.trim(),
@@ -330,6 +335,7 @@ function CreateFamily({
 function JoinFamily({ onBack }: { onBack: () => void }) {
   const qc = useQueryClient()
   const ensureUserId = useSession((s) => s.ensureUserId)
+  const ensureLoginKey = useSession((s) => s.ensureLoginKey)
   const addKnownUser = useSession((s) => s.addKnownUser)
   const [code, setCode] = useState('')
   const [username, setUsername] = useState('')
@@ -347,6 +353,8 @@ function JoinFamily({ onBack }: { onBack: () => void }) {
     setErr('')
     try {
       const uid = ensureUserId()
+      // 同 CreateFamily：旧身份没有 loginKey 会导致引导后换不到 JWT
+      ensureLoginKey(uid)
       await apiFns.setIdentity(uid)
       const r = await apiFns.joinFamily({
         code,
@@ -514,10 +522,14 @@ function CodeRow({ label, code, hint }: { label: string; code: string; hint: str
       <Button
         variant="outline"
         size="sm"
-        onClick={() => {
-          navigator.clipboard?.writeText(code)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1600)
+        onClick={async () => {
+          // HTTP 环境下 navigator.clipboard 不存在，必须走 execCommand 兜底；
+          // 复制失败时不显示"已复制"，免得用户以为复制成功了。
+          const ok = await copyText(code)
+          if (ok) {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1600)
+          }
         }}
       >
         {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -529,6 +541,7 @@ function CodeRow({ label, code, hint }: { label: string; code: string; hint: str
 
 function ShowCodes({ codes }: { codes: { child: string; parent: string } }) {
   const qc = useQueryClient()
+  const userId = useSession((s) => s.userId)
   return (
     <div className="flex flex-1 flex-col justify-center py-10">
       <div className="animate-pop-in mb-2 text-6xl">🎉</div>
@@ -547,7 +560,12 @@ function ShowCodes({ codes }: { codes: { child: string; parent: string } }) {
       <Button
         size="lg"
         className="mt-6 w-full"
-        onClick={() => qc.invalidateQueries({ queryKey: qk.bootstrap })}
+        onClick={async () => {
+          // 兜底：进入主壳前再确认一次身份/令牌就绪（创建后 rpc 已自动换过 JWT，
+          // 这里失败不阻塞 —— bootstrap 重查本身就能暴露问题）
+          if (userId) await apiFns.setIdentity(userId).catch(() => {})
+          qc.invalidateQueries({ queryKey: qk.bootstrap })
+        }}
       >
         开始使用
       </Button>

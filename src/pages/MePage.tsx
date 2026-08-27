@@ -6,6 +6,7 @@ import { Button, Card, Empty, Field, Input, Sheet, Spinner } from '@/components/
 import { qk, useBootstrap, useMe, useRedemptions } from '@/hooks/useApp'
 import { getBackend } from '@/lib/backend'
 import { BackendError } from '@/lib/backend/types'
+import { copyText } from '@/lib/clipboard'
 import { cn } from '@/lib/cn'
 import { useSession } from '@/store/session'
 
@@ -219,10 +220,14 @@ function InviteRow({ code, role, claim }: { code: string; role: string; claim: b
       <Button
         variant="outline"
         size="sm"
-        onClick={() => {
-          navigator.clipboard?.writeText(code)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1600)
+        onClick={async () => {
+          // HTTP 环境下 navigator.clipboard 不存在，走 execCommand 兜底；
+          // 失败时不显示对勾，免得误导
+          const ok = await copyText(code)
+          if (ok) {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1600)
+          }
         }}
       >
         {copied ? <Check size={16} /> : <Copy size={16} />}

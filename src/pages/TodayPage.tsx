@@ -74,8 +74,8 @@ export default function TodayPage() {
           </div>
         </div>
 
-        {/* 家长切孩子。只有一个孩子时不显示，省得多一行噪音 */}
-        {isParent && children.length > 1 && (
+        {/* 家长切换查看谁的日程。默认看第一个孩子；也可以切回自己看自己的安排 */}
+        {isParent && me && children.length > 0 && (
           <div className="no-scrollbar -mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1">
             {children.map((c) => (
               <button
@@ -90,6 +90,16 @@ export default function TodayPage() {
                 {c.nickname}
               </button>
             ))}
+            <button
+              onClick={() => setViewingMember(me.id)}
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-medium transition',
+                viewing?.id === me.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600',
+              )}
+            >
+              <span className="text-base">{me.avatar_emoji}</span>
+              {me.nickname}（我）
+            </button>
           </div>
         )}
       </div>

@@ -9,6 +9,13 @@ if (!connectionString) {
 
 export const pool = new Pool({ connectionString, max: 10 })
 
+// node-postgres 默认把 DATE(1082) 列解析成 JS Date（且是服务器本地时区的零点），
+// JSON 序列化后变成 ISO UTC 字符串（如 "2026-08-26T16:00:00.000Z"）。
+// 前端（PGlite 本地模式）期望的是原始 'YYYY-MM-DD' 字符串 —— 两边不一致会导致
+// 今天/日历页按日期比较/分组永远匹配不上（任务全部"消失"）。
+// 这里把 DATE 保持为原始字符串，与 PGlite 的行为对齐。
+pg.types.setTypeParser(1082, (v) => v)
+
 /**
  * 以某个成员身份（sub = members.user_id）在事务内执行。
  * 完全复刻 pglite.adapter 的本地做法：

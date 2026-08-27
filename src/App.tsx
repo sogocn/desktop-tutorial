@@ -51,9 +51,15 @@ function Boot() {
 
   useEffect(() => {
     let cancelled = false
-    api.setIdentity(userId).then(() => {
-      if (!cancelled) setIdentityReady(true)
-    })
+    api.setIdentity(userId)
+      .then(() => {
+        if (!cancelled) setIdentityReady(true)
+      })
+      // 网络抖动/服务端瞬时不可用时也要放行：卡在这里等于永远停在启动画面。
+      // 放行后由 bootstrap 查询自己暴露错误（Shell 有「启动失败 + 重新加载」兜底）。
+      .catch(() => {
+        if (!cancelled) setIdentityReady(true)
+      })
     return () => {
       cancelled = true
     }

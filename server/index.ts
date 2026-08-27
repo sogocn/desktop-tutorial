@@ -41,7 +41,9 @@ function resolveIdentity(req: Request): { sub: string; provisional: boolean } | 
   }
   const uid = req.headers['x-user-id']
   const key = req.headers['x-login-key']
-  if (typeof uid === 'string' && typeof key === 'string') {
+  // 空 key 视同没带：老版本升级上来的身份可能没有 loginKey，
+  // 静默接受会把「空字符串的哈希」落库，之后这个身份永远换不到 JWT。
+  if (typeof uid === 'string' && typeof key === 'string' && key.length > 0) {
     return { sub: uid, provisional: true }
   }
   return null
