@@ -54,11 +54,16 @@ app.post('/api/rpc', async (req: Request, res: Response) => {
   const { fn, args } = req.body as RpcBody
   if (typeof fn !== 'string') return res.status(400).json({ error: 'fn 必填' })
 
+  // bootstrap_state 允许游客身份（首次打开 / 退出身份后）：以 anon 跑，
+  // 函数内部 auth.uid() 为 null → 直接返回 {"in_family": false}，前端据此进入引导页。
   const ident = resolveIdentity(req)
-  if (!ident) return res.status(401).json({ error: '未认证' })
+  if (!ident && fn !== 'bootstrap_state') {
+    return res.status(401).json({ error: '未认证' })
+  }
+  const safeIdent = ident ?? { sub: null, provisional: false }
 
   try {
-    const result = await runAsMember(ident.sub, async (client) => {
+    const result = await runAsMember(safeIdent.sub, async (client) => {
       const keys = Object.keys(args ?? {})
       const call = keys.map((k, i) => `${k} => $${i + 1}`).join(', ')
       const values = keys.map((k) => jsonValue((args ?? {})[k]))
@@ -68,7 +73,7 @@ app.post('/api/rpc', async (req: Request, res: Response) => {
     })
 
     // 引导阶段：把登录密钥落库，让这个身份之后能换 JWT
-    if (ident.provisional && BOOTSTRAP_FNS.has(fn)) {
+    if (safeIdent.provisional && BOOTSTRAP_FNS.has(fn)) {
       const loginKey = String(req.headers['x-login-key'])
       if (fn === 'add_member') {
         const childUserId = (result as { user_id?: string } | null)?.user_id
@@ -82,7 +87,7 @@ app.post('/api/rpc', async (req: Request, res: Response) => {
           return res.json({ result: { ...(result as object), login_key: loginKey } })
         }
       } else {
-        await runAsMember(ident.sub, (c) =>
+        await runAsMember(safeIdent.sub, (c) =>
           c.query('select app.set_member_login_key($1)', [hashKey(loginKey)]),
         )
       }

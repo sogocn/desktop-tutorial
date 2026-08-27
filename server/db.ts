@@ -24,12 +24,12 @@ export async function runAsMember<T>(
   try {
     await client.query('BEGIN')
     const role = sub ? 'authenticated' : 'anon'
-    if (sub) {
-      await client.query('SELECT set_config($1, $2, true)', [
-        'request.jwt.claims',
-        JSON.stringify({ sub, role: 'authenticated' }),
-      ])
-    }
+    // 始终写入 request.jwt.claims：游客（sub 为 null）也给出明确 role=anon，
+    // 这样 auth.uid() 读到的是干净的 null，而不是缺省值导致的行为漂移。
+    await client.query('SELECT set_config($1, $2, true)', [
+      'request.jwt.claims',
+      JSON.stringify({ sub: sub ?? null, role }),
+    ])
     await client.query(`SET LOCAL ROLE ${role}`)
     const result = await fn(client)
     await client.query('COMMIT')

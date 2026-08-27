@@ -68,8 +68,11 @@ cd "$APP_HOME"/server
 env "DATABASE_URL=postgres://$PG_USER:$PG_PASS@127.0.0.1:5432/$PG_DB" \
   ./node_modules/.bin/tsx migrate.ts
 
-# 迁移创建了 authenticated 角色，让 API 连接用户能 SET ROLE
+# 迁移创建了 anon / authenticated / service_role 角色，让 API 连接用户能 SET ROLE
+# （游客路径 bootstrap_state 走 anon，普通请求走 authenticated，管理类走 service_role）
+sudo -u postgres psql -d "$PG_DB" -c "grant anon to $PG_USER;" || true
 sudo -u postgres psql -d "$PG_DB" -c "grant authenticated to $PG_USER;" || true
+sudo -u postgres psql -d "$PG_DB" -c "grant service_role to $PG_USER;" || true
 
 # ---- 8. systemd 守护 API ----
 cat > /etc/systemd/system/familyquest-api.service <<UNIT
