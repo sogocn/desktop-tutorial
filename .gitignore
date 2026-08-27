@@ -1,0 +1,24 @@
+# 依赖与构建缓存
+node_modules/
+*.log
+npm-debug.log*
+
+# 本地/运行期密钥（服务端 .env 由部署脚本在实例上生成，绝不进仓库）
+.env
+!.env.example
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+
+# 测试截图与本地工作记忆（与部署无关）
+qa-screenshots/
+.workbuddy/
+overview-familyquest-test.md
+
+# 排除 Mac/Win 临时文件
+*.swp
+*~
+
+# 说明：dist/、server/、db/、scripts/、deploy/、src/、public/ 均纳入版本库，
+# 因为轻量云部署脚本依赖 clone 后的这些目录直接运行。

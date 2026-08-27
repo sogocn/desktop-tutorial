@@ -1,0 +1,95 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* 任务色板：日历上一眼分辨谁的什么事，别用纯饱和色，屏幕上刺眼 */
+  --color-task-sky: oklch(0.72 0.13 235);
+  --color-task-violet: oklch(0.68 0.16 300);
+  --color-task-emerald: oklch(0.72 0.14 160);
+  --color-task-amber: oklch(0.78 0.14 75);
+  --color-task-rose: oklch(0.7 0.16 15);
+  --color-task-slate: oklch(0.62 0.03 250);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    /* 小孩会到处乱按，禁掉双击缩放和下拉刷新，不然操作一次跳一次 */
+    overscroll-behavior-y: none;
+    touch-action: manipulation;
+  }
+
+  /* iOS 上输入框字号小于 16px 会触发自动放大，页面直接错位 */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  button {
+    @apply cursor-pointer select-none;
+  }
+}
+
+@layer utilities {
+  /* 刘海屏底部安全区。底部导航栏必须留，否则按钮压在 Home Indicator 下面 */
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-pop-in {
+  animation: pop-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 0.18s ease-out;
+}
