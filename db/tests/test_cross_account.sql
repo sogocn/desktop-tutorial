@@ -76,7 +76,7 @@ begin
   perform set_config('request.jwt.claims',
     '{"sub":"2a222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
   r := app.create_task(
-    p_assignee_id        => '33333333-3333-3333-3333-333333333333',
+    p_assignee_ids       => array['33333333-3333-3333-3333-333333333333'::uuid],
     p_title              => '每日阅读打卡',
     p_schedule_kind      => 'recurring',
     p_recurrence         => '{"freq":"daily"}'::jsonb,
@@ -85,7 +85,7 @@ begin
     p_checkin_points     => 2,
     p_checkin_limit      => 3);
 
-  assert (r->>'task_id') is not null, 'SETUP 爸爸派任务应返回 task_id';
+  assert (r->'task_ids') is not null, 'SETUP 爸爸派任务应返回 task_ids';
   raise notice '✓ SETUP 家庭/成员/商城/隔壁家庭 + 爸爸派任务';
 end $$;
 
@@ -294,7 +294,7 @@ begin
   ok := false;
   begin
     perform app.create_task(
-      p_assignee_id       => '22222222-2222-2222-2222-222222222222',
+      p_assignee_ids       => array['22222222-2222-2222-2222-222222222222'::uuid],
       p_title             => '替爸爸干活',
       p_completion_points => 1);
   exception when others then ok := (sqlerrm like 'FORBIDDEN%');

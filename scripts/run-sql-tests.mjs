@@ -44,7 +44,7 @@ for (const f of [...listSql('db/local'), ...listSql('db/migrations')]) {
 console.log('\n› 运行断言')
 notices.length = 0
 // 每个文件自带 begin/rollback，互不污染。新增断言文件记得挂到这里。
-const suites = ['db/tests/test_expand.sql', 'db/tests/test_signin.sql']
+const suites = ['db/tests/test_expand.sql', 'db/tests/test_signin.sql', 'db/tests/test_parent_multiusers.sql']
 for (const f of suites) {
   console.log(`  › ${f}`)
   await run(f, read(f))
