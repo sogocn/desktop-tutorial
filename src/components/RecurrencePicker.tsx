@@ -1,7 +1,7 @@
 import { Chip } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { dayOfMonth, isoWeekday, WEEKDAY_LABELS, type Ymd } from '@/lib/date'
-import type { Recurrence } from '@/types/db'
+import type { Recurrence, Task } from '@/types/db'
 
 /**
  * 六种排期的 UI。用户脑子里想的是"每周三练琴"，
@@ -39,6 +39,43 @@ export function defaultSchedule(today: Ymd): ScheduleValue {
     monthOverflow: 'last_day',
     endsOn: null,
   }
+}
+
+/** 编辑任务时把已有的 Task 反向映射回表单状态 */
+export function taskToSchedule(t: Task): ScheduleValue {
+  const date = t.starts_on
+  const r = t.recurrence as Recurrence | undefined
+  const byweekday = r && 'byweekday' in r && Array.isArray(r.byweekday) ? r.byweekday : [1]
+  const bymonthday = r && 'bymonthday' in r && Array.isArray(r.bymonthday) ? r.bymonthday : [1]
+  const monthOverflow =
+    r && 'month_overflow' in r && (r.month_overflow === 'skip' || r.month_overflow === 'last_day')
+      ? r.month_overflow
+      : 'last_day'
+
+  if (t.is_deadline_style) {
+    return { mode: 'deadline', date, byweekday, bymonthday, monthOverflow, endsOn: t.ends_on }
+  }
+  if (t.schedule_kind === 'once') {
+    return { mode: 'once', date, byweekday, bymonthday, monthOverflow, endsOn: t.ends_on }
+  }
+  if (r?.freq === 'daily') {
+    return { mode: 'daily', date, byweekday, bymonthday, monthOverflow, endsOn: t.ends_on }
+  }
+  if (r?.freq === 'weekly') {
+    const isWeekday = byweekday.length === 5 && [1, 2, 3, 4, 5].every((d) => byweekday.includes(d))
+    return {
+      mode: isWeekday ? 'weekday' : 'weekly',
+      date,
+      byweekday,
+      bymonthday,
+      monthOverflow,
+      endsOn: t.ends_on,
+    }
+  }
+  if (r?.freq === 'monthly') {
+    return { mode: 'monthly', date, byweekday, bymonthday, monthOverflow, endsOn: t.ends_on }
+  }
+  return { mode: 'once', date, byweekday: [1], bymonthday: [1], monthOverflow: 'last_day', endsOn: t.ends_on }
 }
 
 /** 把 UI 状态翻译成数据库认的东西 */

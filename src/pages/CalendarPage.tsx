@@ -1,12 +1,14 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { TaskCard } from '@/components/TaskCard'
+import { TaskDetailSheet } from '@/components/TaskDetailSheet'
+import { TaskFormSheet } from '@/components/TaskFormSheet'
 import { colorOf, Empty, Spinner } from '@/components/ui'
 import { useBootstrap, useMe, useMonthCalendar, useViewingMember } from '@/hooks/useApp'
 import { cn } from '@/lib/cn'
 import { addMonths, formatMd, formatMonth, monthOf, WEEKDAY_LABELS, type Ymd } from '@/lib/date'
 import { useSession } from '@/store/session'
-import type { CalendarEntry } from '@/types/db'
+import type { CalendarEntry, Task } from '@/types/db'
 
 export default function CalendarPage() {
   const { data: boot } = useBootstrap()
@@ -19,6 +21,8 @@ export default function CalendarPage() {
   const cur = anchor ?? today
   const [selected, setSelected] = useState<Ymd | null>(null)
   const sel = selected ?? today
+  const [detail, setDetail] = useState<CalendarEntry | null>(null)
+  const [editing, setEditing] = useState<Task | null>(null)
 
   const { grid, byDate, isLoading } = useMonthCalendar(cur, viewing?.id ?? null)
   const curMonth = monthOf(cur)
@@ -148,12 +152,23 @@ export default function CalendarPage() {
                   entry={e}
                   // 未来的任务不给点完成 —— 今天点明天的卡就是刷分
                   editable={e.occurrence_date <= today}
+                  onOpen={setDetail}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <TaskDetailSheet
+        entry={detail}
+        onClose={() => setDetail(null)}
+        onEdit={(t) => {
+          setDetail(null)
+          setEditing(t)
+        }}
+      />
+      <TaskFormSheet open={!!editing} onClose={() => setEditing(null)} task={editing} />
     </div>
   )
 }

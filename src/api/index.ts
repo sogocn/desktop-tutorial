@@ -133,7 +133,8 @@ export const getToday = () => query<{ d: Ymd }>('select app.today() as d').then(
 // 任务
 // ---------------------------------------------------------------------------
 export interface CreateTaskInput {
-  assigneeId: string
+  /** 多选指派人：为每个孩子各建一份独立任务副本 */
+  assigneeIds: string[]
   title: string
   iconEmoji?: string
   color?: string
@@ -152,8 +153,8 @@ export interface CreateTaskInput {
 }
 
 export const createTask = (p: CreateTaskInput) =>
-  rpc<{ task_id: string; version: number; starts_on: Ymd }>('create_task', {
-    p_assignee_id: p.assigneeId,
+  rpc<{ task_ids: string[]; group_id: string | null; starts_on: Ymd }>('create_task', {
+    p_assignee_ids: p.assigneeIds,
     p_title: p.title,
     p_icon_emoji: p.iconEmoji ?? '⭐',
     p_color: p.color ?? 'sky',
@@ -169,6 +170,50 @@ export const createTask = (p: CreateTaskInput) =>
     p_checkin_points: p.checkinPoints ?? 0,
     p_checkin_limit: p.checkinLimit ?? 1,
     p_completion_points: p.completionPoints ?? 0,
+  })
+
+export interface UpdateTaskInput {
+  taskId: string
+  title?: string
+  iconEmoji?: string
+  color?: string
+  scheduleKind?: 'once' | 'recurring'
+  recurrence?: Recurrence
+  startsOn?: Ymd | null
+  endsOn?: Ymd | null
+  windowStart?: string | null
+  windowEnd?: string | null
+  dueTime?: string | null
+  isDeadline?: boolean
+  checkinPoints?: number
+  checkinLimit?: number
+  completionPoints?: number
+}
+
+export const updateTask = (p: UpdateTaskInput) =>
+  rpc<{ task_id: string; updated: boolean }>('update_task', {
+    p_task_id: p.taskId,
+    p_title: p.title ?? null,
+    p_icon_emoji: p.iconEmoji ?? null,
+    p_color: p.color ?? null,
+    p_schedule_kind: p.scheduleKind ?? null,
+    p_recurrence: p.recurrence ?? null,
+    p_starts_on: p.startsOn ?? null,
+    p_ends_on: p.endsOn ?? null,
+    p_window_start: p.windowStart ?? null,
+    p_window_end: p.windowEnd ?? null,
+    p_due_time: p.dueTime ?? null,
+    p_is_deadline: p.isDeadline ?? null,
+    p_checkin_points: p.checkinPoints ?? null,
+    p_checkin_limit: p.checkinLimit ?? null,
+    p_completion_points: p.completionPoints ?? null,
+  })
+
+export const deleteTask = (p: { taskId: string; scope: 'once' | 'all'; date?: Ymd | null }) =>
+  rpc<{ task_id: string; scope: string; group_id?: string | null }>('delete_task', {
+    p_task_id: p.taskId,
+    p_scope: p.scope,
+    p_date: p.date ?? null,
   })
 
 export const getTask = (id: string) =>

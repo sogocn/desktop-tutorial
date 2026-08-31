@@ -2,12 +2,14 @@ import { AlarmClock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { SigninCard } from '@/components/SigninCard'
 import { TaskCard } from '@/components/TaskCard'
+import { TaskDetailSheet } from '@/components/TaskDetailSheet'
+import { TaskFormSheet } from '@/components/TaskFormSheet'
 import { Empty, Spinner } from '@/components/ui'
 import { useBootstrap, useCalendar, useMe, useViewingMember } from '@/hooks/useApp'
 import { cn } from '@/lib/cn'
 import { addDays, formatFull, relativeDay, type Ymd } from '@/lib/date'
 import { useSession } from '@/store/session'
-import type { CalendarEntry } from '@/types/db'
+import type { CalendarEntry, Task } from '@/types/db'
 
 export default function TodayPage() {
   const { data: boot } = useBootstrap()
@@ -18,6 +20,8 @@ export default function TodayPage() {
   const today = boot?.today ?? ''
   const [date, setDate] = useState<Ymd | null>(null)
   const cur = date ?? today
+  const [detail, setDetail] = useState<CalendarEntry | null>(null)
+  const [editing, setEditing] = useState<Task | null>(null)
 
   // deadline 型任务要提前预告，所以往后多看 30 天
   const { data: entries, isLoading } = useCalendar(cur, addDays(cur, 30), viewing?.id ?? null)
@@ -156,11 +160,21 @@ export default function TodayPage() {
         ) : (
           <div className="space-y-2.5">
             {todayList.map((e) => (
-              <TaskCard key={`${e.task_id}-${e.occurrence_date}`} entry={e} />
+              <TaskCard key={`${e.task_id}-${e.occurrence_date}`} entry={e} onOpen={setDetail} />
             ))}
           </div>
         )}
       </div>
+
+      <TaskDetailSheet
+        entry={detail}
+        onClose={() => setDetail(null)}
+        onEdit={(t) => {
+          setDetail(null)
+          setEditing(t)
+        }}
+      />
+      <TaskFormSheet open={!!editing} onClose={() => setEditing(null)} task={editing} />
     </div>
   )
 }

@@ -189,6 +189,33 @@ export function useCreateTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['calendar'] })
       qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/** 家长编辑任务（含整组副本同步） */
+export function useUpdateTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.updateTask,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['calendar'] })
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/** 删除任务：scope='once' 删某一次，scope='all' 软删整条（含同组副本） */
+export function useDeleteTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.deleteTask,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['calendar'] })
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
     },
   })
 }

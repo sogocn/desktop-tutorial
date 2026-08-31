@@ -1,33 +1,44 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   defaultSchedule,
   RecurrencePicker,
+  taskToSchedule,
   toRecurrence,
   type ScheduleValue,
 } from '@/components/RecurrencePicker'
 import { Button, Chip, Field, Input, Sheet, TASK_COLORS } from '@/components/ui'
-import { useBootstrap, useCreateTask, useMe, useViewingMember } from '@/hooks/useApp'
+import { useBootstrap, useCreateTask, useMe, useUpdateTask } from '@/hooks/useApp'
 import { BackendError } from '@/lib/backend/types'
 import { celebrate } from '@/lib/celebrate'
 import { cn } from '@/lib/cn'
-import type { TaskColor } from '@/types/db'
+import type { Task, TaskColor } from '@/types/db'
 
 const ICONS = ['⭐', '📚', '🎹', '🏃', '🧹', '🦷', '🛏️', '🥦', '🐶', '🎨', '🧮', '💧']
 
-export function TaskFormSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function TaskFormSheet({
+  open,
+  onClose,
+  task,
+}: {
+  open: boolean
+  onClose: () => void
+  /** 传入即有任务 = 编辑模式；不传 = 新建 */
+  task?: Task | null
+}) {
   const { data: boot } = useBootstrap()
   const me = useMe()
-  const viewing = useViewingMember()
   const createTask = useCreateTask()
+  const updateTask = useUpdateTask()
   const today = boot?.today ?? ''
 
   const isParent = me?.role === 'parent'
+  const editing = !!task
   const cap = boot?.family?.child_task_points_cap ?? 5
 
   const [title, setTitle] = useState('')
   const [icon, setIcon] = useState('⭐')
   const [color, setColor] = useState<TaskColor>('sky')
-  const [assignee, setAssignee] = useState<string>('')
+  const [assignees, setAssignees] = useState<string[]>([])
   const [sched, setSched] = useState<ScheduleValue>(() => defaultSchedule(today))
   const [completionPoints, setCompletionPoints] = useState(isParent ? 5 : 1)
   const [checkinPoints, setCheckinPoints] = useState(0)
@@ -36,51 +47,96 @@ export function TaskFormSheet({ open, onClose }: { open: boolean; onClose: () =>
   const [windowEnd, setWindowEnd] = useState('')
   const [err, setErr] = useState('')
 
-  const targetId = isParent ? assignee || viewing?.id || me?.id : me?.id
   const members = boot?.members ?? []
 
-  // 孩子自建任务的积分上限，UI 上直接卡住，别等提交完再报错
+  // 打开时根据「新建 / 编辑」预填
+  useEffect(() => {
+    if (!open) return
+    if (task) {
+      setTitle(task.title)
+      setIcon(task.icon_emoji)
+      setColor(task.color)
+      setSched(taskToSchedule(task))
+      setCompletionPoints(task.completion_points)
+      setCheckinPoints(task.checkin_points)
+      setCheckinLimit(task.checkin_daily_limit)
+      setWindowStart(task.window_start_time ?? '')
+      setWindowEnd(task.due_time ?? task.window_end_time ?? '')
+      setAssignees([task.assignee_id])
+    } else {
+      setTitle('')
+      setIcon('⭐')
+      setColor('sky')
+      setAssignees([])
+      setSched(defaultSchedule(today))
+      setCompletionPoints(isParent ? 5 : 1)
+      setCheckinPoints(0)
+      setCheckinLimit(1)
+      setWindowStart('')
+      setWindowEnd('')
+    }
+    setErr('')
+  }, [open, task, today, isParent])
+
+  const pending = createTask.isPending || updateTask.isPending
   const total = completionPoints + checkinPoints
   const overCap = !isParent && total > cap
+  // 家长新建必须至少选一个孩子
+  const needAssignee = isParent && !editing
+  const canSave = !!title.trim() && !overCap && !pending && (!needAssignee || assignees.length > 0)
 
-  function reset() {
-    setTitle('')
-    setIcon('⭐')
-    setColor('sky')
-    setAssignee('')
-    setSched(defaultSchedule(today))
-    setCompletionPoints(isParent ? 5 : 1)
-    setCheckinPoints(0)
-    setCheckinLimit(1)
-    setWindowStart('')
-    setWindowEnd('')
-    setErr('')
+  function toggleAssignee(id: string) {
+    setAssignees((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
   async function submit() {
-    if (!targetId || !title.trim()) return
+    if (!canSave || !title.trim()) return
     setErr('')
     const r = toRecurrence(sched)
     try {
-      await createTask.mutateAsync({
-        assigneeId: targetId,
-        title: title.trim(),
-        iconEmoji: icon,
-        color,
-        scheduleKind: r.scheduleKind,
-        recurrence: r.recurrence,
-        startsOn: r.startsOn,
-        endsOn: sched.endsOn,
-        isDeadline: r.isDeadline,
-        windowStart: windowStart || null,
-        windowEnd: windowEnd || null,
-        dueTime: sched.mode === 'deadline' ? windowEnd || null : null,
-        checkinPoints,
-        checkinLimit,
-        completionPoints,
-      })
+      if (editing && task) {
+        await updateTask.mutateAsync({
+          taskId: task.id,
+          title: title.trim(),
+          iconEmoji: icon,
+          color,
+          scheduleKind: r.scheduleKind,
+          recurrence: r.recurrence,
+          startsOn: r.startsOn,
+          endsOn: sched.endsOn,
+          isDeadline: r.isDeadline,
+          windowStart: windowStart || null,
+          windowEnd: windowEnd || null,
+          dueTime: sched.mode === 'deadline' ? windowEnd || null : null,
+          checkinPoints,
+          checkinLimit,
+          completionPoints,
+        })
+      } else {
+        const ids = isParent ? assignees : [me!.id]
+        if (ids.length === 0) {
+          setErr('请至少选一个孩子')
+          return
+        }
+        await createTask.mutateAsync({
+          assigneeIds: ids,
+          title: title.trim(),
+          iconEmoji: icon,
+          color,
+          scheduleKind: r.scheduleKind,
+          recurrence: r.recurrence,
+          startsOn: r.startsOn,
+          endsOn: sched.endsOn,
+          isDeadline: r.isDeadline,
+          windowStart: windowStart || null,
+          windowEnd: windowEnd || null,
+          dueTime: sched.mode === 'deadline' ? windowEnd || null : null,
+          checkinPoints,
+          checkinLimit,
+          completionPoints,
+        })
+      }
       celebrate('small')
-      reset()
       onClose()
     } catch (e) {
       setErr(e instanceof BackendError ? e.message : String(e))
@@ -91,15 +147,15 @@ export function TaskFormSheet({ open, onClose }: { open: boolean; onClose: () =>
     <Sheet
       open={open}
       onClose={onClose}
-      title="新建任务"
+      title={editing ? '编辑任务' : '新建任务'}
       footer={
         <Button
           size="lg"
           className="mb-1 w-full"
-          disabled={!title.trim() || overCap || createTask.isPending}
+          disabled={!canSave}
           onClick={submit}
         >
-          {createTask.isPending ? '保存中…' : '保存'}
+          {pending ? '保存中…' : editing ? '保存修改' : '保存'}
         </Button>
       }
     >
@@ -152,16 +208,16 @@ export function TaskFormSheet({ open, onClose }: { open: boolean; onClose: () =>
           </div>
         </div>
 
-        {/* 派给谁：只有家长能派；成员列表含全部家人（含自己，便于 solo 自测） */}
-        {isParent && (
+        {/* 派给谁：仅家长新建时可多选（编辑不改指派人） */}
+        {isParent && !editing && (
           <div>
-            <p className="mb-1.5 text-sm font-medium text-slate-700">派给谁</p>
+            <p className="mb-1.5 text-sm font-medium text-slate-700">派给谁（可多选）</p>
             <div className="flex flex-wrap gap-2">
               {members.map((m) => (
                 <Chip
                   key={m.id}
-                  active={targetId === m.id}
-                  onClick={() => setAssignee(m.id)}
+                  active={assignees.includes(m.id)}
+                  onClick={() => toggleAssignee(m.id)}
                   className="flex items-center gap-1.5"
                 >
                   <span className="text-base">{m.avatar_emoji}</span>
@@ -169,10 +225,8 @@ export function TaskFormSheet({ open, onClose }: { open: boolean; onClose: () =>
                 </Chip>
               ))}
             </div>
-            {!members.some((m) => m.role === 'child') && (
-              <p className="mt-1.5 text-xs text-slate-400">
-                还没有孩子加入，可先派给自己测试；要给孩子派任务，去「我」页生成邀请码让孩子加入。
-              </p>
+            {assignees.length === 0 && (
+              <p className="mt-1.5 text-xs text-rose-500">请至少选一个孩子</p>
             )}
           </div>
         )}
@@ -215,7 +269,7 @@ export function TaskFormSheet({ open, onClose }: { open: boolean; onClose: () =>
           </Field>
         )}
 
-        {/* 奖励 */}
+        {/* 奖励（手动输入积分） */}
         <div className="space-y-4 border-t border-slate-100 pt-4">
           <p className="text-sm font-semibold text-slate-900">奖励</p>
 
