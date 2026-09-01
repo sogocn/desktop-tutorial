@@ -179,7 +179,7 @@ end $$;
 -- ###########################################################################
 do $$
 declare
-  v_tid uuid; r jsonb; n int; v_bal int;
+  v_tid uuid; r jsonb; n int; v_bal int; v_badge int;
 begin
   perform set_config('request.jwt.claims',
     '{"sub":"6a222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
@@ -212,12 +212,18 @@ begin
    where o.task_id = v_tid and o.occurrence_date = '2026-09-10';
   assert n = 1, format('R3-2 完成应自动补 1 条打卡，实际 %s', n);
 
-  -- 积分：completion 5 + checkin 3 = 8
+  -- 积分：completion 5 + checkin 3 = 8（013 起另有勋章奖励分，单独计入基线）
+  select coalesce(sum(delta), 0) into v_badge
+    from app.point_ledger
+   where member_id = '63333333-3333-3333-3333-333333333333'
+     and source_type = 'badge' and entry_kind = 'primary';
+
   select points_balance into v_bal
     from app.members where id = '63333333-3333-3333-3333-333333333333';
-  assert v_bal = 8, format('R3-3 余额应为 8(5+3)，实际 %s', v_bal);
+  assert v_bal = 8 + v_badge,
+    format('R3-3 余额应为 8(5+3)+勋章%s，实际 %s', v_badge, v_bal);
 
-  raise notice '✓ 需求3 单次完成即打卡(余额=%s)', v_bal;
+  raise notice '✓ 需求3 单次完成即打卡(完成5+打卡3+勋章%s=余额%s)', v_badge, v_bal;
 end $$;
 
 

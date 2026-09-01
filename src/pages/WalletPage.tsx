@@ -550,6 +550,11 @@ function BadgeGrid({ memberId, isParent }: { memberId: string; isParent: boolean
                     )}
                   </div>
                   <p className="truncate text-[11px] text-slate-400">{ruleSummary(b.rule)}</p>
+                  {toNum(b.points_bonus) > 0 && (
+                    <p className="truncate text-[11px] text-emerald-600">
+                      奖励 +{toNum(b.points_bonus)} 分
+                    </p>
+                  )}
                   {!got && threshold > 0 && (
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
                       <div

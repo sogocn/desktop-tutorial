@@ -12,6 +12,8 @@ export interface Family {
   child_task_points_policy: 'free' | 'capped' | 'zero'
   child_task_points_cap: number
   child_daily_points_cap: number
+  /** 多少积分换 1 元（现金商品按这个比率走）。家长可在「家长设置」里调 */
+  cash_rate_points: number
 }
 
 export interface Member {
@@ -200,6 +202,8 @@ export interface BadgeProgress {
   earned: boolean
   earned_at: string | null
   is_system: boolean
+  /** 首次获得这枚勋章时额外发的积分（家长可调，系统勋章可被家庭覆盖） */
+  points_bonus: number
 }
 
 /** app.list_family_badges() 的一个元素。系统内置勋章 is_system=true，不可改删 */
@@ -214,4 +218,8 @@ export interface FamilyBadge {
   sort_order: number
   is_system: boolean
   earned_count: number
+  /** 系统勋章的家庭覆盖值；家庭自建勋章=本体值。家长看这俩决定可选范围 */
+  base_bonus: number
+  /** 当前家庭实际生效的奖励分（系统勋章取覆盖值，家庭勋章取本体值） */
+  points_bonus: number
 }

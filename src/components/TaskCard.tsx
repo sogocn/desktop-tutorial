@@ -1,4 +1,5 @@
 import { Check, Clock, Star } from 'lucide-react'
+import { useState } from 'react'
 import { colorOf } from '@/components/ui'
 import { useTaskActions } from '@/hooks/useApp'
 import { buzz, celebrate } from '@/lib/celebrate'
@@ -7,22 +8,21 @@ import { formatTime } from '@/lib/date'
 import type { CalendarEntry } from '@/types/db'
 
 /**
- * 任务卡交互（落实需求3"循环 / 到期任务当日默认打卡"语义）：
+ * 任务卡交互（落实 012 打卡 / 完成 逻辑梳理）：
  *
  *  - 单次任务（非到期）：主按钮="完成"。后端 complete_occurrence 会自动补一次打卡，
  *    所以"完成"本身就等于"完成+打卡"。已完成时圆圈变绿、不可再点，撤销走详情页。
  *
  *  - 循环任务（带打卡分）：主按钮="打卡"（当日默认动作，可提前打、可打满 daily_limit
- *    次）；右上方次级="完成(提前)"，把当天这一次的 occurrence 直接标完成。
- *    循环任务不自动打卡，所以"完成"与"打卡"是两个独立动作。
+ *    次）；右上方次级="完成 ▾"，展开「完成当日 / 完成全部」两个选项。
  *
- *  - 到期任务（带打卡分，is_deadline_style=true）：主按钮同样="打卡"（当日默认动作），
- *    右上方次级="完成(提前)"。最后一次/提前完成走 complete_occurrence，后端会同时补一次
- *    打卡（完成+打卡一起发分）。
+ *  - 到期任务（is_deadline_style）：与循环任务同理——主按钮"打卡"，次级"完成 ▾"。
+ *    走"完成"时后端会同时补一次打卡（完成+打卡一起发分）。
  *
- *  - 循环 / 到期任务（不带打卡分）：没有打卡概念，主按钮直接="完成"。
+ *  - 循环 / 到期任务（不带打卡分）：主按钮直接="完成当日"，次级"完成 ▾"仍可「完成全部」。
  *
- *  内联 menu 已移除，请假 / 撤销 / 编辑 / 删除统一收进 TaskDetailSheet。
+ *  两套积分在卡片上并列展示：打卡分（琥珀色）+ 完成分（主题色），点明它们是两条独立账目。
+ *  内联 menu 之外，请假 / 撤销 / 编辑 / 删除统一收进 TaskDetailSheet。
  */
 export function TaskCard({
   entry,
@@ -33,7 +33,8 @@ export function TaskCard({
   editable?: boolean
   onOpen?: (e: CalendarEntry) => void
 }) {
-  const { checkin, complete, uncomplete, skip } = useTaskActions()
+  const { checkin, complete, uncomplete, skip, completeAll } = useTaskActions()
+  const [menuOpen, setMenuOpen] = useState(false)
   const c = colorOf(entry.color)
 
   const isRecurring = entry.schedule_kind === 'recurring'
@@ -42,14 +43,13 @@ export function TaskCard({
   const done = entry.status === 'completed'
   const skipped = entry.status === 'skipped'
   const busy =
-    complete.isPending || checkin.isPending || uncomplete.isPending || skip.isPending
+    complete.isPending || checkin.isPending || uncomplete.isPending || skip.isPending || completeAll.isPending
 
   // 循环任务当天已打卡达标（或整次已"完成"）
   const checkedInFull =
     done || (hasCheckin && entry.checkin_count >= entry.checkin_daily_limit && entry.checkin_daily_limit > 0)
 
   // 主按钮 = 打卡 的场景：循环任务 或 到期任务，且配了打卡分
-  // （需求3：循环 / 到期任务当日默认是实现打卡；单次任务则"完成"本身即完成+打卡）
   const primaryIsCheckin = hasCheckin && (isRecurring || isDeadline)
   // 还能继续打卡
   const canCheckinMore = editable && !busy && !done && !skipped && primaryIsCheckin && !checkedInFull
@@ -60,7 +60,7 @@ export function TaskCard({
       ? `${formatTime(entry.due_time)} 前`
       : ''
 
-  // 圆圈主操作：循环带打卡分 = 打卡；其余 = 完成
+  // 圆圈主操作：循环带打卡分 = 打卡；其余 = 完成当日
   async function primaryAction() {
     if (!editable || busy || done || skipped) return
     buzz()
@@ -74,11 +74,27 @@ export function TaskCard({
     }
   }
 
-  // 循环任务的"完成(提前)"
-  async function completeAhead() {
-    if (!editable || busy || done || skipped) return
+  // 完成当日：把今天这一次 occurrence 标完成（发完成分；once/到期同时补一次打卡）
+  async function completeToday() {
+    if (busy) return
+    setMenuOpen(false)
     buzz()
     const r = await complete.mutateAsync({ taskId: entry.task_id, date: entry.occurrence_date })
+    celebrate((r?.points_awarded ?? 0) >= 20 ? 'big' : 'small')
+  }
+
+  // 完成全部：今天及之后的所有安排一次性标记完成（只发一次完成分）
+  async function completeAllDays() {
+    setMenuOpen(false)
+    if (
+      !window.confirm(
+        '将把该任务「今天及之后」的所有安排一次性标记为完成（只发一次完成分），确定？',
+      )
+    ) {
+      return
+    }
+    buzz()
+    const r = await completeAll.mutateAsync({ taskId: entry.task_id, uptoDate: null })
     celebrate((r?.points_awarded ?? 0) >= 20 ? 'big' : 'small')
   }
 
@@ -151,9 +167,10 @@ export function TaskCard({
                 {timeLabel}
               </span>
             )}
+            {/* 两套积分并列展示，点明是独立账目 */}
             {entry.completion_points > 0 && (
               <span className={cn('rounded-md px-1.5 py-0.5 font-medium', c.bg, c.text)}>
-                完成 +{entry.completion_points}
+                {hasCheckin ? `完成全部 +${entry.completion_points}` : `完成 +${entry.completion_points}`}
               </span>
             )}
             {hasCheckin && (
@@ -173,16 +190,44 @@ export function TaskCard({
           </div>
         </button>
 
-        {/* 循环任务（带打卡分）的"完成(提前)"次级按钮；无打卡分时主按钮就是完成 */}
-        {editable && primaryIsCheckin && !done && !skipped && (
-          <button
-            onClick={completeAhead}
-            disabled={busy}
-            className="my-2 mr-2 flex shrink-0 items-center gap-0.5 rounded-xl bg-violet-100 px-3 text-sm font-medium text-violet-700 active:scale-95"
-          >
-            <Star size={14} strokeWidth={2.5} />
-            完成
-          </button>
+        {/* 循环 / 到期任务：次级"完成 ▾"菜单，含 完成当日 / 完成全部 */}
+        {editable && (isRecurring || isDeadline) && !done && !skipped && (
+          <div className="relative my-2 mr-2 flex shrink-0 items-center">
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              disabled={busy}
+              className="flex items-center gap-0.5 rounded-xl bg-violet-100 px-3 text-sm font-medium text-violet-700 active:scale-95"
+            >
+              <Star size={14} strokeWidth={2.5} />
+              完成 ▾
+            </button>
+            {menuOpen && (
+              <>
+                {/* 点击空白处关闭 */}
+                <button
+                  className="fixed inset-0 z-10 cursor-default"
+                  aria-label="关闭菜单"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                  <button
+                    onClick={completeToday}
+                    disabled={busy}
+                    className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+                  >
+                    完成当日
+                  </button>
+                  <button
+                    onClick={completeAllDays}
+                    disabled={busy}
+                    className="block w-full border-t border-slate-100 px-3 py-2 text-left text-sm text-violet-700 hover:bg-violet-50 active:bg-violet-100"
+                  >
+                    完成全部
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

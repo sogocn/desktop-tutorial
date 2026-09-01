@@ -65,7 +65,7 @@ declare
   v_ming uuid := 'b0000000-0000-4000-8000-000000000001';
   v_task uuid := 'c0000000-0000-4000-8000-00000000000a';
   v_today date;
-  r jsonb; n int; v_bal int; v_sum int; ok boolean;
+  r jsonb; n int; v_bal int; v_sum int; v_badge int; ok boolean;
 begin
   perform set_config('request.jwt.claims',
     '{"sub":"b1000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
@@ -74,20 +74,27 @@ begin
   -- I1 第一次完成加 5 分
   r := app.complete_occurrence(v_task, v_today);
   assert (r->>'points_awarded')::int = 5, format('I1 首次完成应加 5 分，实际 %s', r->>'points_awarded');
+
+  -- 013 起首次拿到勋章会额外发一笔奖励分，且不随撤销退回。
+  -- 后面的余额断言都以此为基线，实读流水而不是写死数值。
+  select coalesce(sum(delta), 0) into v_badge from app.point_ledger
+   where member_id = v_ming and source_type = 'badge' and entry_kind = 'primary';
+  assert v_badge > 0, 'I1a 首次完成任务应有勋章奖励分';
+
   select points_balance into v_bal from app.members where id = v_ming;
-  assert v_bal = 5, format('I1b 余额应为 5，实际 %s', v_bal);
+  assert v_bal = 5 + v_badge, format('I1b 余额应为 %s，实际 %s', 5 + v_badge, v_bal);
 
   -- I2 撤销退分
   r := app.uncomplete_occurrence(v_task, v_today);
   select points_balance into v_bal from app.members where id = v_ming;
-  assert v_bal = 0, format('I2 撤销后余额应为 0，实际 %s', v_bal);
+  assert v_bal = v_badge, format('I2 撤销后余额应为 %s，实际 %s', v_badge, v_bal);
 
   -- I3 ★核心 bug：再次完成必须再加 5 分（旧实现会被唯一索引静默吞掉，停在 0）
   r := app.complete_occurrence(v_task, v_today);
   assert (r->>'points_awarded')::int = 5,
     format('I3 撤销后再完成应再加 5 分，实际 %s', r->>'points_awarded');
   select points_balance into v_bal from app.members where id = v_ming;
-  assert v_bal = 5, format('I3b 余额应回到 5，实际 %s', v_bal);
+  assert v_bal = 5 + v_badge, format('I3b 余额应回到 %s，实际 %s', 5 + v_badge, v_bal);
 
   -- I4 两条 primary completion，序号 0 / 1
   select count(*)::int into n from app.point_ledger
@@ -110,12 +117,12 @@ begin
   assert (r->>'already')::boolean, 'I6 重复完成应返回 already=true';
   assert (r->>'points_awarded')::int = 0, 'I6b 重复完成不能再发分';
   select points_balance into v_bal from app.members where id = v_ming;
-  assert v_bal = 5, format('I6c 余额仍应为 5，实际 %s', v_bal);
+  assert v_bal = 5 + v_badge, format('I6c 余额仍应为 %s，实际 %s', 5 + v_badge, v_bal);
 
   -- I7 第二轮撤销撤的是 seq=1 那条，不是早就撤过的 seq=0
   r := app.uncomplete_occurrence(v_task, v_today);
   select points_balance into v_bal from app.members where id = v_ming;
-  assert v_bal = 0, format('I7 二次撤销后余额应为 0，实际 %s', v_bal);
+  assert v_bal = v_badge, format('I7 二次撤销后余额应为 %s，实际 %s', v_badge, v_bal);
   select count(*)::int into n from app.point_ledger where entry_kind = 'reversal';
   assert n = 2, format('I7b 应有 2 条 reversal，实际 %s', n);
 
@@ -128,7 +135,7 @@ begin
   -- I9 请假也要能退掉最后一条完成分
   r := app.skip_occurrence(v_task, v_today);
   select points_balance into v_bal from app.members where id = v_ming;
-  assert v_bal = 0, format('I9 改请假后余额应为 0，实际 %s', v_bal);
+  assert v_bal = v_badge, format('I9 改请假后余额应为 %s，实际 %s', v_badge, v_bal);
 
   -- I10 对账：流水合计 === 余额缓存
   select coalesce(sum(delta), 0) into v_sum from app.point_ledger where member_id = v_ming;

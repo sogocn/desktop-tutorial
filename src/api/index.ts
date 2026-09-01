@@ -250,6 +250,13 @@ export const uncomplete = (taskId: string, date: Ymd) =>
 export const skip = (taskId: string, date: Ymd, note?: string) =>
   rpc<ActionResult>('skip_occurrence', { p_task_id: taskId, p_date: date, p_note: note ?? null })
 
+/** 完成全部：重复 / 期限任务批量完成今天及之后（uptoDate 省略=ends_on）。完成分只发一次 */
+export const completeAll = (taskId: string, uptoDate?: Ymd | null) =>
+  rpc<ActionResult & { completed_occurrences?: number }>('complete_all_occurrences', {
+    p_task_id: taskId,
+    p_upto_date: uptoDate ?? null,
+  })
+
 // ---------------------------------------------------------------------------
 // 钱包
 // ---------------------------------------------------------------------------
@@ -370,6 +377,8 @@ export interface UpsertBadgeInput {
   description?: string | null
   rule: BadgeRule
   sortOrder?: number
+  /** 家庭自定义勋章可直接设奖励分；不传则保持原值（新建时默认 0） */
+  pointsBonus?: number | null
   parentToken?: string | null
 }
 
@@ -383,6 +392,7 @@ export const upsertBadge = (p: UpsertBadgeInput) =>
     p_description: p.description ?? null,
     p_rule: p.rule,
     p_sort_order: p.sortOrder ?? 0,
+    p_points_bonus: p.pointsBonus ?? null,
   })
 
 export const deleteBadge = (id: string, parentToken?: string | null) =>
@@ -393,6 +403,28 @@ export const deleteBadge = (id: string, parentToken?: string | null) =>
 
 export const listFamilyBadges = (parentToken?: string | null) =>
   rpc<FamilyBadge[]>('list_family_badges', { p_parent_token: parentToken ?? null })
+
+// ---------------------------------------------------------------------------
+// 家长调节：现金兑换比率 / 勋章奖励分
+// ---------------------------------------------------------------------------
+/** 设"多少积分换 1 元"。传 null 表示不改动该字段。返回家庭最新设置 */
+export const setFamilySettings = (parentToken: string | null, cashRatePoints: number) =>
+  rpc<{ family_id: string; cash_rate_points: number }>('set_family_settings', {
+    p_parent_token: parentToken ?? null,
+    p_cash_rate_points: cashRatePoints,
+  })
+
+/** 调某一枚勋章的奖励分。家庭自建勋章直接改本体；系统勋章走覆盖值（本体不动） */
+export const setBadgeBonus = (
+  parentToken: string | null,
+  badgeId: string,
+  pointsBonus: number,
+) =>
+  rpc<{ badge_id: string; points_bonus: number; effective_bonus: number }>('set_badge_bonus', {
+    p_parent_token: parentToken ?? null,
+    p_badge_id: badgeId,
+    p_points_bonus: pointsBonus,
+  })
 
 // ---------------------------------------------------------------------------
 // 勋章

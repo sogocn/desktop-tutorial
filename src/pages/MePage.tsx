@@ -1,9 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronRight, Copy, Download, Lock, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, Coins, Copy, Download, Lock, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import * as api from '@/api'
 import { Button, Card, Empty, Field, Input, Sheet, Spinner } from '@/components/ui'
-import { qk, useBootstrap, useMe, useRedemptions } from '@/hooks/useApp'
+import { qk, useBootstrap, useMe, useRedemptions, useSetFamilySettings } from '@/hooks/useApp'
 import { getBackend } from '@/lib/backend'
 import { BackendError } from '@/lib/backend/types'
 import { copyText } from '@/lib/clipboard'
@@ -18,6 +18,7 @@ export default function MePage() {
   const removeAllKnownUsers = useSession((s) => s.removeAllKnownUsers)
   const [pinSheet, setPinSheet] = useState(false)
   const [approvals, setApprovals] = useState(false)
+  const [rewardOpen, setRewardOpen] = useState(false)
 
   if (!boot?.in_family || !me) return <Spinner />
   const isParent = me.role === 'parent'
@@ -95,6 +96,16 @@ export default function MePage() {
                 hint={pendingCount > 0 ? `${pendingCount} 笔待处理` : '查看孩子的兑换申请'}
                 onClick={() => setApprovals(true)}
               />
+              <RowButton
+                icon={<Coins size={18} />}
+                label="奖励与兑换"
+                hint={
+                  boot.family
+                    ? `当前 ${boot.family.cash_rate_points} 积分 = 1 元，点此调整`
+                    : '兑换比例与勋章奖励'
+                }
+                onClick={() => setRewardOpen(true)}
+              />
             </div>
           </section>
         )}
@@ -164,7 +175,92 @@ export default function MePage() {
 
       <PinSheet open={pinSheet} onClose={() => setPinSheet(false)} hasPin={me.has_pin} />
       <ApprovalsSheet open={approvals} onClose={() => setApprovals(false)} />
+      <RewardSettingsSheet open={rewardOpen} onClose={() => setRewardOpen(false)} />
     </div>
+  )
+}
+
+/** 家长调节现金兑换比率：多少积分换 1 元。改完同步到本家庭所有现金商品 */
+function RewardSettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { data: boot } = useBootstrap()
+  const setRate = useSetFamilySettings()
+  const current = boot?.family?.cash_rate_points ?? 10
+  const [rate, setRateVal] = useState(String(current))
+  const [err, setErr] = useState('')
+  const [ok, setOk] = useState(false)
+
+  const n = Number(rate)
+  const rateOk = Number.isFinite(n) && n >= 1 && n <= 100000
+  const changed = n !== current
+
+  // 每次打开都把输入框同步成当前值，避免残留上一次的输入
+  if (open && rate !== String(current) && !ok) {
+    setRateVal(String(current))
+  }
+
+  async function save() {
+    setErr('')
+    setOk(false)
+    try {
+      await setRate.mutateAsync({ cashRatePoints: n })
+      setOk(true)
+      setTimeout(onClose, 800)
+    } catch (e) {
+      setErr(e instanceof BackendError ? e.message : String(e))
+    }
+  }
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="奖励与兑换"
+      footer={
+        <Button
+          size="lg"
+          className="mb-1 w-full"
+          disabled={!rateOk || !changed || setRate.isPending}
+          onClick={save}
+        >
+          {setRate.isPending ? '保存中…' : '保存'}
+        </Button>
+      }
+    >
+      <div className="space-y-4">
+        <div className="rounded-2xl bg-slate-50 p-4">
+          <p className="text-sm font-medium text-slate-700">现金兑换比例</p>
+          <p className="mt-1 text-xs text-slate-500">
+            孩子用积分换零花钱时，每 <span className="font-semibold">1 元</span> 需要的积分。
+            调小 = 孩子更容易换到钱；调大 = 更"值钱"。
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            当前：<span className="font-semibold text-slate-900">{current} 积分 = 1 元</span>
+          </p>
+        </div>
+
+        <Field label="多少积分换 1 元" hint="1 ~ 100000 之间">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={rate}
+            onChange={(e) => {
+              setRateVal(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))
+              setOk(false)
+            }}
+            placeholder="10"
+          />
+        </Field>
+
+        <p className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">
+          参考：签到最易得、满星最难，补满星卡定价也最高。比例改了只影响之后的兑换，
+          已兑换的不追溯。
+        </p>
+
+        {ok && <p className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700">已保存</p>}
+        {err && <p className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-600">{err}</p>}
+      </div>
+    </Sheet>
   )
 }
 

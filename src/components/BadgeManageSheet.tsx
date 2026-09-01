@@ -1,7 +1,7 @@
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button, Empty, Field, Input, Sheet, Spinner } from '@/components/ui'
-import { useDeleteBadge, useFamilyBadges, useUpsertBadge } from '@/hooks/useApp'
+import { useDeleteBadge, useFamilyBadges, useSetBadgeBonus, useUpsertBadge } from '@/hooks/useApp'
 import {
   BADGE_TIERS,
   buildRule,
@@ -36,6 +36,10 @@ interface FormState {
   kind: RuleKind
   dimension: RuleDimension
   threshold: string
+  /** 这枚勋章首次获得时额外发的积分。家庭勋章存本体，系统勋章走家庭覆盖值 */
+  pointsBonus: string
+  /** 是否系统内置勋章。系统勋章只能调奖励分，其余字段后端不允许改 */
+  isSystem: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -46,6 +50,8 @@ const EMPTY_FORM: FormState = {
   kind: 'streak_days',
   dimension: 'active',
   threshold: '7',
+  pointsBonus: '0',
+  isSystem: false,
 }
 
 /** 把一枚已有勋章摊平成表单状态。规则里认不出来的 kind 一律回落到默认值 */
@@ -62,6 +68,8 @@ function toForm(b: FamilyBadge): FormState {
     kind: RULE_KINDS.some((k) => k.key === kind) ? (kind as RuleKind) : 'streak_days',
     dimension: RULE_DIMENSIONS.some((d) => d.key === dim) ? (dim as RuleDimension) : 'active',
     threshold: String(toNum(r.threshold) || 7),
+    pointsBonus: String(toNum(b.points_bonus) || 0),
+    isSystem: b.is_system,
   }
 }
 
@@ -119,6 +127,10 @@ export function BadgeManageSheet({ open, onClose }: { open: boolean; onClose: ()
                     )}
                   </p>
                   <p className="truncate text-xs text-slate-400">{ruleSummary(b.rule)}</p>
+                  <p className="truncate text-[11px] text-emerald-600">
+                    奖励 +{toNum(b.points_bonus)} 分
+                    {b.is_system && toNum(b.points_bonus) !== toNum(b.base_bonus) && ' · 已覆盖'}
+                  </p>
                 </div>
                 <button
                   onClick={() => setForm(toForm(b))}
@@ -160,6 +172,7 @@ function BadgeForm({
   onClose: () => void
 }) {
   const upsert = useUpsertBadge()
+  const setBonus = useSetBadgeBonus()
   const [err, setErr] = useState('')
   const [ok, setOk] = useState(false)
 
@@ -167,22 +180,31 @@ function BadgeForm({
     onChange({ ...form, [key]: value })
 
   const threshold = toNum(form.threshold)
+  const bonus = toNum(form.pointsBonus)
   const nameOk = form.name.trim().length > 0
-  const canSave = nameOk && threshold > 0 && !upsert.isPending
+  const bonusOk = Number.isFinite(bonus) && bonus >= 0
+  const saving = upsert.isPending || setBonus.isPending
+  const canSave = nameOk && threshold > 0 && bonusOk && !saving
   const unit = RULE_KINDS.find((k) => k.key === form.kind)?.unit ?? ''
 
   async function save() {
     setErr('')
     try {
-      await upsert.mutateAsync({
-        // 新建时不带 id，让后端生成；编辑时带上就是 update
-        ...(form.id ? { id: form.id } : {}),
-        name: form.name.trim(),
-        emoji: form.emoji.trim() || '🏅',
-        tier: form.tier,
-        description: form.description.trim(),
-        rule: buildRule(form.kind, threshold, form.dimension),
-      })
+      if (form.isSystem) {
+        // 系统内置勋章只能调奖励分，其余字段后端不允许改
+        await setBonus.mutateAsync({ badgeId: form.id!, pointsBonus: bonus })
+      } else {
+        await upsert.mutateAsync({
+          // 新建时不带 id，让后端生成；编辑时带上就是 update
+          ...(form.id ? { id: form.id } : {}),
+          name: form.name.trim(),
+          emoji: form.emoji.trim() || '🏅',
+          tier: form.tier,
+          description: form.description.trim(),
+          rule: buildRule(form.kind, threshold, form.dimension),
+          pointsBonus: bonus,
+        })
+      }
       setOk(true)
       setTimeout(onClose, 700)
     } catch (e) {
@@ -197,7 +219,7 @@ function BadgeForm({
       title={form.id ? '编辑勋章' : '新建勋章'}
       footer={
         <Button size="lg" className="mb-1 w-full" disabled={!canSave} onClick={save}>
-          {upsert.isPending ? '保存中…' : '保存'}
+          {saving ? '保存中…' : '保存'}
         </Button>
       }
     >
@@ -212,6 +234,8 @@ function BadgeForm({
           </p>
         </div>
 
+        {/* 系统内置勋章只能调奖励分，其余字段统一不可改：整体置灰 + 禁交互 */}
+        <div className={cn(form.isSystem && 'pointer-events-none opacity-50')}>
         <div className="flex gap-3">
           <div className="w-20 shrink-0">
             <Field label="图标">
@@ -305,6 +329,24 @@ function BadgeForm({
             value={form.threshold}
             onChange={(e) => set('threshold', e.target.value.replace(/\D/g, '').slice(0, 5))}
             placeholder="7"
+          />
+        </Field>
+        </div>
+
+        {form.isSystem && (
+          <p className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">
+            系统内置勋章只能调整「奖励积分」，名字 / 规则由系统统一设定，不可改。
+          </p>
+        )}
+
+        <Field label="奖励积分" hint="孩子首次获得这枚勋章时额外发的积分（按获取难度给个参考值）">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={form.pointsBonus}
+            onChange={(e) => set('pointsBonus', e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+            placeholder="0"
           />
         </Field>
 

@@ -178,8 +178,13 @@ export function useTaskActions() {
     mutationFn: (v: { taskId: string; date: Ymd }) => api.skip(v.taskId, v.date),
     onSuccess: invalidate,
   })
+  const completeAll = useMutation({
+    mutationFn: (v: { taskId: string; uptoDate?: Ymd | null }) =>
+      api.completeAll(v.taskId, v.uptoDate),
+    onSuccess: invalidate,
+  })
 
-  return { checkin, complete, uncomplete, skip, invalidate }
+  return { checkin, complete, uncomplete, skip, completeAll, invalidate }
 }
 
 export function useCreateTask() {
@@ -302,6 +307,33 @@ export function useDeleteBadge() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.deleteBadge(id, parentToken()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.familyBadges })
+      qc.invalidateQueries({ queryKey: ['badges'] })
+    },
+  })
+}
+
+/** 家长调节现金兑换比率（多少积分换 1 元）。改完同步本家庭所有现金商品 */
+export function useSetFamilySettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { cashRatePoints: number }) =>
+      api.setFamilySettings(parentToken(), v.cashRatePoints),
+    onSuccess: () => {
+      // cash_rate_points 在 bootstrap.family 里，比率商品在 shop 里
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+      qc.invalidateQueries({ queryKey: qk.shop })
+    },
+  })
+}
+
+/** 家长调某一枚勋章的奖励分。家庭勋章改本体，系统勋章走覆盖值 */
+export function useSetBadgeBonus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { badgeId: string; pointsBonus: number }) =>
+      api.setBadgeBonus(parentToken(), v.badgeId, v.pointsBonus),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.familyBadges })
       qc.invalidateQueries({ queryKey: ['badges'] })

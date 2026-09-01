@@ -302,20 +302,34 @@ end $$;
 -- D. 业务动作：完成 / 打卡 / 快照 / 归档
 -- ###########################################################################
 do $$
-declare r jsonb; n int; v_pts int; ok boolean;
+declare r jsonb; n int; v_pts int; ok boolean; v_bal int; v_badge int;
 begin
   perform set_config('request.jwt.claims',
     '{"sub":"3a333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
 
-  -- D1 完成任务加分
+  -- D1 完成任务加分。
+  -- 013 起：单次完成发「单次分」。T1 是循环任务且开了打卡(2 分) → 发 2，
+  -- 不再发整任务的完成分 5（那笔留给「完成全部」作为一次性结清奖励）。
+  v_bal := (select points_balance from app.members
+             where id = '33333333-3333-3333-3333-333333333333');
   r := app.complete_occurrence('00000000-0000-4000-8000-000000000001','2026-01-02');
-  assert (r->>'points_awarded')::int = 5, format('D1 完成应加 5 分，实际 %s', r->>'points_awarded');
-  assert (r->>'balance')::int = 5, format('D1b 余额应为 5，实际 %s', r->>'balance');
+  assert (r->>'points_awarded')::int = 2, format('D1 单次完成应加单次分 2，实际 %s', r->>'points_awarded');
+
+  -- 013 起首次拿到勋章还会额外发奖励分，从流水里实读，不写死数值
+  -- （有几枚勋章会同时达成取决于跑测试的时间，比如「早起鸟」）
+  select coalesce(sum(delta), 0) into v_badge
+    from app.point_ledger
+   where member_id = '33333333-3333-3333-3333-333333333333'
+     and source_type = 'badge' and entry_kind = 'primary';
+  assert v_badge > 0, 'D1b 首次完成任务应有勋章奖励分';
+  assert (r->>'balance')::int = v_bal + 2 + v_badge,
+    format('D1c 余额应为 %s（单次分 2 + 勋章 %s），实际 %s',
+           v_bal + 2 + v_badge, v_badge, r->>'balance');
 
   -- D2 重复点击幂等，不重复加分
   r := app.complete_occurrence('00000000-0000-4000-8000-000000000001','2026-01-02');
   assert (r->>'already')::boolean, 'D2 重复完成应返回 already';
-  assert (r->>'balance')::int = 5, 'D2b 余额不应变化';
+  assert (r->>'balance')::int = v_bal + 2 + v_badge, 'D2b 余额不应变化';
   select count(*) into n from app.point_ledger where source_type='completion';
   assert n = 1, format('D2c 流水应只有 1 条，实际 %s', n);
 
@@ -335,7 +349,13 @@ begin
 
   -- D5 撤回完成：分数原路退回，流水追加反向记录而不是删除
   r := app.uncomplete_occurrence('00000000-0000-4000-8000-000000000001','2026-01-02');
-  assert (r->>'balance')::int = 5 + 2*3 - 5, format('D5 撤回后余额应为 6，实际 %s', r->>'balance');
+  -- 起始 + 单次分 2 + 3 次打卡 2×3 − 撤回的 2 + 勋章奖励
+  select coalesce(sum(delta), 0) into v_badge
+    from app.point_ledger
+   where member_id = '33333333-3333-3333-3333-333333333333'
+     and source_type = 'badge' and entry_kind = 'primary';
+  assert (r->>'balance')::int = v_bal + 2 + 2*3 - 2 + v_badge,
+    format('D5 撤回后余额应为 %s，实际 %s', v_bal + 2 + 2*3 - 2 + v_badge, r->>'balance');
   select count(*) into n from app.point_ledger where entry_kind='reversal';
   assert n = 1, 'D5b 应追加 1 条反向记录';
   select count(*) into n from app.point_ledger where source_type='completion' and entry_kind='primary';
