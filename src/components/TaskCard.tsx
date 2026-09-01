@@ -7,16 +7,20 @@ import { formatTime } from '@/lib/date'
 import type { CalendarEntry } from '@/types/db'
 
 /**
- * 任务卡交互（落实需求3"完成即打卡"语义）：
+ * 任务卡交互（落实需求3"循环 / 到期任务当日默认打卡"语义）：
  *
- *  - 单次 / 到期任务：主按钮="完成"。后端 complete_occurrence 会自动补一次打卡，
+ *  - 单次任务（非到期）：主按钮="完成"。后端 complete_occurrence 会自动补一次打卡，
  *    所以"完成"本身就等于"完成+打卡"。已完成时圆圈变绿、不可再点，撤销走详情页。
  *
  *  - 循环任务（带打卡分）：主按钮="打卡"（当日默认动作，可提前打、可打满 daily_limit
  *    次）；右上方次级="完成(提前)"，把当天这一次的 occurrence 直接标完成。
  *    循环任务不自动打卡，所以"完成"与"打卡"是两个独立动作。
  *
- *  - 循环任务（不带打卡分）：没有打卡概念，主按钮直接="完成"。
+ *  - 到期任务（带打卡分，is_deadline_style=true）：主按钮同样="打卡"（当日默认动作），
+ *    右上方次级="完成(提前)"。最后一次/提前完成走 complete_occurrence，后端会同时补一次
+ *    打卡（完成+打卡一起发分）。
+ *
+ *  - 循环 / 到期任务（不带打卡分）：没有打卡概念，主按钮直接="完成"。
  *
  *  内联 menu 已移除，请假 / 撤销 / 编辑 / 删除统一收进 TaskDetailSheet。
  */
@@ -33,6 +37,7 @@ export function TaskCard({
   const c = colorOf(entry.color)
 
   const isRecurring = entry.schedule_kind === 'recurring'
+  const isDeadline = entry.is_deadline_style
   const hasCheckin = entry.checkin_points > 0
   const done = entry.status === 'completed'
   const skipped = entry.status === 'skipped'
@@ -43,8 +48,9 @@ export function TaskCard({
   const checkedInFull =
     done || (hasCheckin && entry.checkin_count >= entry.checkin_daily_limit && entry.checkin_daily_limit > 0)
 
-  // 主按钮 = 打卡 的场景：循环任务且配了打卡分
-  const primaryIsCheckin = isRecurring && hasCheckin
+  // 主按钮 = 打卡 的场景：循环任务 或 到期任务，且配了打卡分
+  // （需求3：循环 / 到期任务当日默认是实现打卡；单次任务则"完成"本身即完成+打卡）
+  const primaryIsCheckin = hasCheckin && (isRecurring || isDeadline)
   // 还能继续打卡
   const canCheckinMore = editable && !busy && !done && !skipped && primaryIsCheckin && !checkedInFull
 

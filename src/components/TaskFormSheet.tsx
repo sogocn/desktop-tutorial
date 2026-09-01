@@ -327,7 +327,19 @@ function PointStepper({
   min?: number
   max?: number
 }) {
+  const [text, setText] = useState(String(value))
+  // value 被外部（如 +/- 按钮）改变时，同步输入框文字
+  useEffect(() => {
+    setText(String(value))
+  }, [value])
+
   const step = value >= 50 ? 10 : value >= 20 ? 5 : 1
+
+  function clamp(n: number) {
+    if (Number.isNaN(n)) return value
+    return Math.max(min, Math.min(max, Math.trunc(n)))
+  }
+
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
@@ -337,17 +349,28 @@ function PointStepper({
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
-          onClick={() => onChange(Math.max(min, value - step))}
+          onClick={() => onChange(clamp(value - step))}
           className="size-9 rounded-lg bg-slate-100 text-lg font-medium text-slate-600 active:scale-90"
         >
           −
         </button>
-        <span className="w-11 text-center text-base font-semibold tabular-nums text-slate-900">
-          {value}
-        </span>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={text}
+          min={min}
+          max={max}
+          onChange={(e) => {
+            setText(e.target.value)
+            const n = parseInt(e.target.value, 10)
+            if (!Number.isNaN(n)) onChange(clamp(n))
+          }}
+          onBlur={() => setText(String(clamp(parseInt(text, 10))))}
+          className="h-9 w-14 rounded-lg border border-slate-200 bg-white text-center text-base font-semibold tabular-nums text-slate-900 focus:border-slate-900 focus:outline-none"
+        />
         <button
           type="button"
-          onClick={() => onChange(Math.min(max, value + step))}
+          onClick={() => onChange(clamp(value + step))}
           className="size-9 rounded-lg bg-slate-100 text-lg font-medium text-slate-600 active:scale-90"
         >
           +

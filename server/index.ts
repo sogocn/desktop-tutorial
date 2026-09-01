@@ -18,8 +18,15 @@ interface RpcBody {
 }
 
 function jsonValue(v: unknown): unknown {
-  // 对象/数组按 JSON 字符串传，避免驱动把它当成 Postgres 数组字面量
-  return v !== null && typeof v === 'object' ? JSON.stringify(v) : v
+  // 数组（uuid[] 等）原样透传，让 pg 驱动按参数声明的类型做原生数组序列化
+  // （如 uuid[] 会被序列成 {uuid1,uuid2}，Postgres 才能正确解析）；
+  // 只有**对象**才按 JSON 字符串传 —— 那是给 jsonb 字段用的。
+  // 以前的版本把数组也 JSON.stringify，导致 uuid[] 收到 "["uuid"]" 字面量而报
+  // "malformed array literal"。
+  if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+    return JSON.stringify(v)
+  }
+  return v
 }
 
 app.get('/api/health', (_req, res) => {

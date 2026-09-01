@@ -124,8 +124,11 @@ export class PGliteBackend implements BackendClient {
     const call = keys.map((k, i) => `${k} => $${i + 1}`).join(', ')
     const values = keys.map((k) => {
       const v = args[k]
-      // jsonb 参数走字符串传递，避免驱动把对象序列化成 Postgres 数组字面量
-      return v !== null && typeof v === 'object' ? JSON.stringify(v) : v
+      // 数组（uuid[] 等）原样透传，由驱动按参数类型做原生数组序列化；
+      // 只有对象才按 JSON 字符串传（给 jsonb 字段用）。
+      // 以前把数组也 JSON.stringify，导致 uuid[] 收到 "["uuid"]" 字面量而报
+      // "malformed array literal"。
+      return v !== null && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : v
     })
     const rows = await this.query<{ result: T }>(`select app.${fn}(${call}) as result`, values)
     return rows[0]?.result as T
