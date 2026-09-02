@@ -320,17 +320,18 @@ export const listRedemptions = (memberId?: string | null) =>
     [memberId ?? null],
   )
 
-export const decideRedemption = (id: string, decision: string, parentToken: string) =>
+/** 审批兑换。014 起家长角色本身就是闸门，parentToken 默认传 null（参数仅作兼容保留）。 */
+export const decideRedemption = (id: string, decision: string, parentToken?: string | null) =>
   rpc<{ redemption_id: string; status: string; balance: number }>('decide_redemption', {
     p_redemption_id: id,
     p_decision: decision,
-    p_parent_token: parentToken,
+    p_parent_token: parentToken ?? null,
   })
 
 /**
  * 家长手动调分。delta 正数是打赏、负数是扣除，一样只追加流水。
- * parentToken 传 null 也能过 —— 没设 PIN 的家庭本来就拿不到 token，
- * 后端 _parent_guard 会按"设过 PIN 就必须验"来判。
+ * parentToken 传 null 即可 —— 014 起后端只看 role='parent'，
+ * 不再因为"设过 PIN"就要求重验。
  */
 export const adjustPoints = (
   memberId: string,

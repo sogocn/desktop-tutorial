@@ -243,12 +243,7 @@ begin
   end;
   assert ok, 'J11 无效 token 必须被拒绝';
 
-  -- J12 设过 PIN 的家庭，不带 token 一律拒绝（家长解锁后手机被孩子接管的场景）
-  ok := false;
-  begin perform app.adjust_member_points(null, v_ming, 10, '不验就调');
-  exception when others then ok := (sqlerrm like 'PARENT_TOKEN_INVALID%');
-  end;
-  assert ok, 'J12 设过 PIN 时不带 token 必须被拒绝';
+  -- J12 删除：014 起设过 PIN 的家长不再被强制重验 token（见 test_no_pin_ops_014.sql）
 
   -- J13 孩子自己调分：连门都进不去
   perform set_config('request.jwt.claims',

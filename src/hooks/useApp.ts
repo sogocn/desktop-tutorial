@@ -21,8 +21,8 @@ export const qk = {
 
 /**
  * 家长令牌只在内存里（铁律 6），过期就当没有。
- * 这里不抛错：没设 PIN 的家庭本来就拿不到 token，让后端 _parent_guard 去判 ——
- * 判断规则只写一处，前端跟着走。
+ * 014 起它已经不是必需品：后端只看 role='parent'，没 token 也放行。
+ * 保留这层是为了"曾经输过 PIN 的会话"继续带着有效 token 走严格分支。
  */
 function parentToken(): string | null {
   return useSession.getState().validParentToken()

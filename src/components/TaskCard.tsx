@@ -22,6 +22,11 @@ import type { CalendarEntry } from '@/types/db'
  *  - 循环 / 到期任务（不带打卡分）：主按钮直接="完成当日"，次级"完成 ▾"仍可「完成全部」。
  *
  *  两套积分在卡片上并列展示：打卡分（琥珀色）+ 完成分（主题色），点明它们是两条独立账目。
+ *
+ *  非循环任务不再单独挂「✓已打卡」徽标：单次/到期任务点"完成"时后端已经顺带补了
+ *  一次打卡，卡片右上角的绿色对勾圆圈就是完成态，再挂一个"已打卡"是同一件事说两遍。
+ *  循环任务的"打卡 +N (a/b)"徽标保留——那是当日进度，与完成态不是一回事。
+ *
  *  内联 menu 之外，请假 / 撤销 / 编辑 / 删除统一收进 TaskDetailSheet。
  */
 export function TaskCard({
@@ -178,11 +183,6 @@ export function TaskCard({
                 打卡 +{entry.checkin_points}
                 {entry.checkin_daily_limit > 1 &&
                   ` (${entry.checkin_count}/${entry.checkin_daily_limit})`}
-              </span>
-            )}
-            {!isRecurring && entry.checkin_count > 0 && (
-              <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-700">
-                <Check size={11} strokeWidth={3} />已打卡
               </span>
             )}
             {skipped && <span className="text-slate-400">已请假</span>}

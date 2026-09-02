@@ -86,8 +86,7 @@ export default function MePage() {
               <RowButton
                 icon={<Lock size={18} />}
                 label={me.has_pin ? '修改家长 PIN' : '设置家长 PIN'}
-                hint={me.has_pin ? '改任务、审批兑换时需要' : '还没设置，任何人都能改任务'}
-                warn={!me.has_pin}
+                hint={me.has_pin ? '其他设备登录这个家长账号时用' : '还没设置'}
                 onClick={() => setPinSheet(true)}
               />
               <RowButton
@@ -405,24 +404,15 @@ function PinSheet({ open, onClose, hasPin }: { open: boolean; onClose: () => voi
 function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const { data } = useRedemptions(null)
-  const validToken = useSession((s) => s.validParentToken)
-  const setParentToken = useSession((s) => s.setParentToken)
-  const [pin, setPin] = useState('')
   const [err, setErr] = useState('')
 
   const pending = (data ?? []).filter((r) => r.status === 'pending')
-  const token = validToken()
 
+  // 014 起家长角色本身就是闸门，不再要求先输 PIN 拿 token
   async function decide(id: string, decision: 'approved' | 'rejected') {
     setErr('')
     try {
-      let t = validToken()
-      if (!t) {
-        const v = await api.verifyPin(pin)
-        setParentToken(v.token, v.expires_at)
-        t = v.token
-      }
-      await api.decideRedemption(id, decision, t)
+      await api.decideRedemption(id, decision, null)
       await qc.invalidateQueries({ queryKey: ['redemptions'] })
       await qc.invalidateQueries({ queryKey: qk.bootstrap })
     } catch (e) {
@@ -433,18 +423,6 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
   return (
     <Sheet open={open} onClose={onClose} title="兑换审批">
       <div className="space-y-4">
-        {!token && (
-          <Field label="先输入家长 PIN" hint="审批需要验证身份，30 分钟内不用重复输">
-            <Input
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              inputMode="numeric"
-              placeholder="••••"
-              className="text-center text-xl tracking-[0.4em]"
-            />
-          </Field>
-        )}
-
         {pending.length === 0 ? (
           <Empty emoji="✅" title="没有待处理的申请" />
         ) : (
@@ -472,7 +450,6 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
                   <Button
                     size="sm"
                     className="flex-1"
-                    disabled={!token && !/^\d{4}$/.test(pin)}
                     onClick={() => decide(r.id, 'approved')}
                   >
                     同意
@@ -481,7 +458,6 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
                     size="sm"
                     variant="outline"
                     className="flex-1"
-                    disabled={!token && !/^\d{4}$/.test(pin)}
                     onClick={() => decide(r.id, 'rejected')}
                   >
                     驳回并退分
