@@ -90,6 +90,8 @@ await setIdentity(parentUid)
 const createRes = await rpc('create_family', {
   p_family_name: 'E2E家庭',
   p_nickname: '爸爸',
+  p_username: 'e2edad',
+  p_pin: '1234',
 })
 const familyId = createRes.family_id
 const parentId = createRes.member_id
@@ -101,6 +103,8 @@ const childAuthUid = uuid()
 await setIdentity(childAuthUid)
 const joinRes = await rpc('join_family', {
   p_code: childCode,
+  p_username: 'e2ekid',
+  p_pin: '1234',
   p_nickname: '小明',
   p_avatar: '🧒',
 })
@@ -108,10 +112,13 @@ const childId = joinRes.member_id          // member_id：作为任务 assignee 
 const childUserId = childAuthUid            // user_id = 加入时 auth.uid()，即本 harness 设定的孩子身份
 assert('加入孩子成员', childId && childUserId, `child=${childId} user=${childUserId}`)
 
-// 家长签发 parent_token：先 set_pin（应用实际流程：建家庭后家长设 PIN），再 verify_parent_pin
+// 家长签发 parent_token：051 起 create_family 就把 PIN 落库了（登录凭证），
+// 这里只确认已设，再直接用它签 token。
 await setIdentity(parentUid)
-const setPin = await rpc('set_pin', { p_pin: '1234' })
-assert('家长设置PIN', setPin === true, `set_pin=${setPin}`)
+const pinRow = await pg.query('select pin_hash is not null as has_pin from app.members where id=$1', [
+  parentId,
+])
+assert('家长PIN随建家庭落库', pinRow.rows[0]?.has_pin === true, `has_pin=${pinRow.rows[0]?.has_pin}`)
 const pinRes = await rpc('verify_parent_pin', { p_pin: '1234', p_member_id: parentId })
 const parentToken = pinRes.token
 assert('家长PIN验证签发token', parentToken, `token=${parentToken?.slice(0, 8)}…`)
@@ -144,9 +151,22 @@ console.log('\n=== 需求1: 积分撤销再完成（核心bug修复）===')
   const b2 = await balance(childId)
   const c2 = await rpc('complete_occurrence', { p_task_id: taskId, p_date: DATE })
   const b3 = await balance(childId)
-  assert('完成任务发放+5', b1 === b0 + 5, `${b0}->${b1} (awarded=${c1.points_awarded})`)
-  assert('撤销完成回退-5', b2 === b0, `${b1}->${b2}`)
-  assert('再次完成二次发放+5(修复点)', b3 === b0 + 5 && b3 === b1, `${b2}->${b3} (关键bug)`)
+  // 013 起首次完成任务还会触发勋章「首获奖励分」（first_step），且奖励分不随撤销回退。
+  // 奖励分从 badges 表读，别写死，免得家长在 UI 上调过就误报。
+  const bonusRow = await pg.query(
+    `select coalesce(points_bonus, 0) as bonus from app.badges where code = 'first_step'`,
+  )
+  const BADGE_BONUS = Number(bonusRow.rows[0]?.bonus ?? 0)
+
+  assert('完成任务发放任务分+首获勋章奖励分',
+    b1 === b0 + 5 + BADGE_BONUS,
+    `${b0}->${b1} (任务分=${c1.points_awarded} 勋章奖励=${BADGE_BONUS})`)
+  assert('撤销完成只回退任务分，勋章奖励分保留',
+    b2 === b0 + BADGE_BONUS,
+    `${b1}->${b2} (保留勋章奖励=${BADGE_BONUS})`)
+  assert('再次完成二次发放+5(修复点)',
+    b3 === b1 && b3 === b2 + 5,
+    `${b2}->${b3} (关键bug；勋章奖励不重复发)`)
   // 重复点完成幂等
   const c3 = await rpc('complete_occurrence', { p_task_id: taskId, p_date: DATE })
   const b4 = await balance(childId)
@@ -186,6 +206,31 @@ console.log('\n=== 需求2/3: 钱包切换 + 家长打赏/扣除 ===')
   const b2 = await balance(childId)
   assert('家长打赏+20', b1 === b0 + 20, `${b0}->${b1} delta=${reward.delta}`)
   assert('家长扣除-10', b2 === b1 - 10, `${b1}->${b2} delta=${deduct.delta}`)
+
+  // 014：设过 PIN 的家长免 token 直接打赏（前端已不再要求先输 PIN）
+  const b2b = await balance(childId)
+  const noTok = await rpc('adjust_member_points', {
+    p_parent_token: null,
+    p_member_id: childId,
+    p_delta: 7,
+    p_reason: '免 token 打赏',
+  })
+  const b2c = await balance(childId)
+  assert('014 家长免 token 打赏成功', b2c === b2b + 7, `${b2b}->${b2c} delta=${noTok?.delta}`)
+
+  // 014：孩子免 token 调分仍被拒（角色闸门没被一起拆掉）
+  await setIdentity(childUserId)
+  let childErr = null
+  try {
+    await rpc('adjust_member_points', {
+      p_parent_token: null,
+      p_member_id: childId,
+      p_delta: 999,
+      p_reason: '娃给自己发钱',
+    })
+  } catch (e) { childErr = e.message }
+  assert('014 孩子免 token 调分仍被拒', /FORBIDDEN/.test(childErr || ''), `err=${childErr}`)
+  await setIdentity(parentUid)
   // 家长不能给自己调分
   let selfErr = null
   try {
