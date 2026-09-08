@@ -250,6 +250,41 @@ export const uncomplete = (taskId: string, date: Ymd) =>
 export const skip = (taskId: string, date: Ymd, note?: string) =>
   rpc<ActionResult>('skip_occurrence', { p_task_id: taskId, p_date: date, p_note: note ?? null })
 
+/** 孩子提交请假申请：只写 pending，等家长同意后才真正 skip（复用 015 流程）。 */
+export const requestSkip = (taskId: string, date: Ymd, note?: string) =>
+  rpc<{ request_id: string; status: string; message: string }>('request_skip', {
+    p_task_id: taskId,
+    p_date: date,
+    p_note: note ?? null,
+  })
+
+/** 家长审批请假。parentToken 默认 null（014 起后端只看 role='parent'，免 PIN）。 */
+export const decideSkip = (
+  reqId: string,
+  decision: 'approved' | 'rejected',
+  parentToken?: string | null,
+) =>
+  rpc<{ request_id: string; status: string; balance: number }>('decide_skip', {
+    p_req_id: reqId,
+    p_decision: decision,
+    p_parent_token: parentToken ?? null,
+  })
+
+/** 家长拉取待批请假（并入审批中心）。 */
+export interface SkipRequest {
+  id: string
+  task_id: string
+  assignee_id: string
+  occurrence_date: string
+  note: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  requested_at: string
+  assignee_name: string
+  task_title: string
+  task_emoji: string
+}
+export const listSkipRequests = () => rpc<SkipRequest[]>('list_skip_requests', { p_parent_token: null })
+
 /** 完成全部：重复 / 期限任务批量完成今天及之后（uptoDate 省略=ends_on）。完成分只发一次 */
 export const completeAll = (taskId: string, uptoDate?: Ymd | null) =>
   rpc<ActionResult & { completed_occurrences?: number }>('complete_all_occurrences', {

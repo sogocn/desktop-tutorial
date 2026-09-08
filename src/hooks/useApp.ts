@@ -145,6 +145,14 @@ export function useRedemptions(memberId: string | null) {
   })
 }
 
+/** 家长拉取待批请假申请（015 流程，并入审批中心）。 */
+export function useSkipRequests() {
+  return useQuery({
+    queryKey: ['skipRequests'],
+    queryFn: () => api.listSkipRequests(),
+  })
+}
+
 /**
  * 做任务的四个动作共用一套失效逻辑。
  * 一次操作可能同时改变日历、余额、勋章 —— 少刷一个界面就对不上。
@@ -178,13 +186,21 @@ export function useTaskActions() {
     mutationFn: (v: { taskId: string; date: Ymd }) => api.skip(v.taskId, v.date),
     onSuccess: invalidate,
   })
+  const requestSkip = useMutation({
+    mutationFn: (v: { taskId: string; date: Ymd }) => api.requestSkip(v.taskId, v.date),
+    onSuccess: () => {
+      // 请假申请不改变 occurrence，无需刷日历；只刷审批列表相关
+      qc.invalidateQueries({ queryKey: ['skipRequests'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
   const completeAll = useMutation({
     mutationFn: (v: { taskId: string; uptoDate?: Ymd | null }) =>
       api.completeAll(v.taskId, v.uptoDate),
     onSuccess: invalidate,
   })
 
-  return { checkin, complete, uncomplete, skip, completeAll, invalidate }
+  return { checkin, complete, uncomplete, skip, requestSkip, completeAll, invalidate }
 }
 
 export function useCreateTask() {

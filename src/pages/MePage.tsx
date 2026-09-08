@@ -3,11 +3,12 @@ import { Check, ChevronRight, Coins, Copy, Download, Lock, LogOut, ShieldCheck, 
 import { useState } from 'react'
 import * as api from '@/api'
 import { Button, Card, Empty, Field, Input, Sheet, Spinner } from '@/components/ui'
-import { qk, useBootstrap, useMe, useRedemptions, useSetFamilySettings } from '@/hooks/useApp'
+import { qk, useBootstrap, useMe, useRedemptions, useSetFamilySettings, useSkipRequests } from '@/hooks/useApp'
 import { getBackend } from '@/lib/backend'
 import { BackendError } from '@/lib/backend/types'
 import { copyText } from '@/lib/clipboard'
 import { cn } from '@/lib/cn'
+import { formatFull } from '@/lib/date'
 import { useSession } from '@/store/session'
 
 export default function MePage() {
@@ -91,8 +92,8 @@ export default function MePage() {
               />
               <RowButton
                 icon={<ShieldCheck size={18} />}
-                label="兑换审批"
-                hint={pendingCount > 0 ? `${pendingCount} 笔待处理` : '查看孩子的兑换申请'}
+                label="审批中心"
+                hint={pendingCount > 0 ? `${pendingCount} 笔待处理` : '查看孩子的兑换 / 请假申请'}
                 onClick={() => setApprovals(true)}
               />
               <RowButton
@@ -404,9 +405,11 @@ function PinSheet({ open, onClose, hasPin }: { open: boolean; onClose: () => voi
 function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient()
   const { data } = useRedemptions(null)
+  const { data: skipData } = useSkipRequests()
   const [err, setErr] = useState('')
 
   const pending = (data ?? []).filter((r) => r.status === 'pending')
+  const skipPending = (skipData ?? []).filter((s) => s.status === 'pending')
 
   // 014 起家长角色本身就是闸门，不再要求先输 PIN 拿 token
   async function decide(id: string, decision: 'approved' | 'rejected') {
@@ -420,52 +423,111 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
     }
   }
 
+  // 015 请假审批：同意时后端复用 skip_occurrence（退分/置 skipped/刷新）；驳回只标记
+  async function decideSkipReq(id: string, decision: 'approved' | 'rejected') {
+    setErr('')
+    try {
+      await api.decideSkip(id, decision, null)
+      await qc.invalidateQueries({ queryKey: ['skipRequests'] })
+      await qc.invalidateQueries({ queryKey: ['calendar'] })
+      await qc.invalidateQueries({ queryKey: qk.bootstrap })
+    } catch (e) {
+      setErr(e instanceof BackendError ? e.message : String(e))
+    }
+  }
+
+  const hasAny = pending.length > 0 || skipPending.length > 0
+
   return (
-    <Sheet open={open} onClose={onClose} title="兑换审批">
-      <div className="space-y-4">
-        {pending.length === 0 ? (
+    <Sheet open={open} onClose={onClose} title="审批中心">
+      <div className="space-y-5">
+        {!hasAny ? (
           <Empty emoji="✅" title="没有待处理的申请" />
         ) : (
-          <div className="space-y-2.5">
-            {pending.map((r) => (
-              <Card key={r.id} className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{r.snap_emoji}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-slate-900">
-                      {r.snap_name} × {Number(r.quantity)}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {r.points_cost} 分 ·{' '}
-                      {new Date(r.requested_at).toLocaleString('zh-CN', {
-                        month: 'numeric',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => decide(r.id, 'approved')}
-                  >
-                    同意
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => decide(r.id, 'rejected')}
-                  >
-                    驳回并退分
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+          <>
+            {pending.length > 0 && (
+              <div className="space-y-2.5">
+                <p className="text-xs font-medium text-slate-500">兑换申请</p>
+                {pending.map((r) => (
+                  <Card key={r.id} className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{r.snap_emoji}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-slate-900">
+                          {r.snap_name} × {Number(r.quantity)}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {r.points_cost} 分 ·{' '}
+                          {new Date(r.requested_at).toLocaleString('zh-CN', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => decide(r.id, 'approved')}
+                      >
+                        同意
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => decide(r.id, 'rejected')}
+                      >
+                        驳回并退分
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {skipPending.length > 0 && (
+              <div className="space-y-2.5">
+                <p className="text-xs font-medium text-slate-500">请假申请（孩子提交，需家长同意）</p>
+                {skipPending.map((s) => (
+                  <Card key={s.id} className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{s.task_emoji}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-slate-900">
+                          {s.assignee_name} 申请请假 · {s.task_title}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {formatFull(s.occurrence_date)}
+                          {s.note ? ` · ${s.note}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => decideSkipReq(s.id, 'approved')}
+                      >
+                        同意
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => decideSkipReq(s.id, 'rejected')}
+                      >
+                        驳回
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {err && <p className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-600">{err}</p>}

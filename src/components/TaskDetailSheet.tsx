@@ -11,7 +11,7 @@ import type { CalendarEntry, Task } from '@/types/db'
 /**
  * 任务详情 / 操作面板。
  * - 家长：编辑、删除本次（仅循环任务）、删除全部。
- * - 任何人：撤销（已完成时）、请假（未完成时）。
+ * - 孩子：撤销（已完成时）、请假（未完成时，走审批——提交后等家长同意才生效）。
  * 删除"某一次"对循环任务 = 在 task_exclusions 里排除这一天；单次/到期任务的
  * "本次"即整条，会自动归并成"全部"删除。
  */
@@ -27,8 +27,9 @@ export function TaskDetailSheet({
   const me = useMe()
   const isParent = me?.role === 'parent'
   const del = useDeleteTask()
-  const { uncomplete, skip } = useTaskActions()
+  const { uncomplete, requestSkip } = useTaskActions()
   const [err, setErr] = useState('')
+  const [skipMsg, setSkipMsg] = useState('')
 
   const { data: task } = useQuery({
     queryKey: ['task', entry?.task_id],
@@ -48,6 +49,18 @@ export function TaskDetailSheet({
     try {
       await fn()
       onClose()
+    } catch (e) {
+      setErr(e instanceof BackendError ? e.message : String(e))
+    }
+  }
+
+  // 孩子请假：提交申请（015 流程），不立即改变 occurrence，等家长审批
+  async function onRequestSkip() {
+    setErr('')
+    setSkipMsg('')
+    try {
+      await requestSkip.mutateAsync({ taskId: entry!.task_id, date: entry!.occurrence_date })
+      setSkipMsg('已提交请假申请，等家长同意后生效')
     } catch (e) {
       setErr(e instanceof BackendError ? e.message : String(e))
     }
@@ -124,7 +137,7 @@ export function TaskDetailSheet({
         )}
 
         {/* 任何人：撤销 / 请假 */}
-        {!isParent && (
+          {!isParent && (
           <div className="space-y-2 border-t border-slate-100 pt-4">
             {done ? (
               <Button
@@ -141,13 +154,15 @@ export function TaskDetailSheet({
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() =>
-                    run(() => skip.mutateAsync({ taskId: entry.task_id, date: entry.occurrence_date }))
-                  }
+                  disabled={!!skipMsg}
+                  onClick={onRequestSkip}
                 >
-                  今天请假
+                  {skipMsg ? '已提交请假' : '今天请假'}
                 </Button>
               )
+            )}
+            {skipMsg && (
+              <p className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-700">{skipMsg}</p>
             )}
           </div>
         )}
