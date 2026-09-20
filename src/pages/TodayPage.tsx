@@ -1,5 +1,6 @@
 import { AlarmClock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { ChallengeCard } from '@/components/ChallengeCard'
 import { SigninCard } from '@/components/SigninCard'
 import { TaskCard } from '@/components/TaskCard'
 import { TaskDetailSheet } from '@/components/TaskDetailSheet'
@@ -137,6 +138,9 @@ export default function TodayPage() {
 
         {/* 今日签到。签到只对"今天"有意义，翻到别的日期就不显示 */}
         {cur === today && <SigninCard />}
+
+        {/* 满星挑战（016）。和签到卡一样只对"今天"有意义；组件内部再按角色判孩子 */}
+        {cur === today && <ChallengeCard />}
 
         {/* deadline 倒计时 */}
         {deadlines.length > 0 && (

@@ -402,6 +402,69 @@ export const applyRetroCard = (kind: RetroCardKind, date: Ymd, memberId?: string
   })
 
 // ---------------------------------------------------------------------------
+// 满星挑战（016）
+// ---------------------------------------------------------------------------
+// 判定全在后端：进度从 member_day.fullstar 派生，成功/失败惰性落库。
+// 前端只负责展示 + 触发两个动作：开启=付入场分；补救=买满星卡 + 补满星（两者都是既有能力）。
+export type ChallengeKind = 'fullstar_21' | 'fullstar_45'
+
+export interface ChallengeSpec {
+  kind: ChallengeKind
+  title: string
+  window_days: number
+  required_fullstar: number
+  allowed_miss: number
+  entry_fee: number
+  reward_points: number
+  reward_card: RetroCardKind
+  reward_card_label: string
+}
+
+export interface ChallengeCurrent {
+  id: string
+  kind: ChallengeKind
+  status: 'active' | 'succeeded' | 'failed'
+  started_on: Ymd
+  ends_on: Ymd
+  window_days: number
+  required_fullstar: number
+  allowed_miss: number
+  elapsed: number
+  fullstar_days: number
+  missed_days: number
+  remaining_days: number
+  /** 漏的天已超过容错，数学上不可能达标（可买满星卡补救） */
+  failing: boolean
+  /** 补救时补哪天：窗口内最近一个没满星的日子 */
+  latest_missed_day: Ymd | null
+  entry_fee: number
+  reward_points: number
+  reward_card_label: string
+  /** 本次读取刚判成功（用于弹一次庆祝；下次读取回到 false） */
+  just_succeeded: boolean
+}
+
+export interface ChallengeState {
+  specs: ChallengeSpec[]
+  current: ChallengeCurrent | null
+  /** 商城在售的补满星卡；没有则前端隐藏「购买补救」入口 */
+  fullstar_card_item: { id: string; name: string; price: number } | null
+}
+
+export const challengeState = () => rpc<ChallengeState>('challenge_state', {})
+
+export const startChallenge = (kind: ChallengeKind) =>
+  rpc<{
+    challenge_id: string
+    kind: ChallengeKind
+    status: string
+    started_on: Ymd
+    ends_on: Ymd
+    entry_fee: number
+    balance: number
+  }>('start_challenge', { p_kind: kind })
+
+// ---------------------------------------------------------------------------
 // 勋章管理（家长）
 // ---------------------------------------------------------------------------
 export interface UpsertBadgeInput {

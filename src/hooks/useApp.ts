@@ -17,6 +17,8 @@ export const qk = {
   signin: (m: string | null) => ['signin', m] as const,
   /** 家长的勋章管理列表（与孩子的勋章墙 badges 分开，失效互不影响） */
   familyBadges: ['familyBadges'] as const,
+  /** 满星挑战（016）：进度 + 可开规格 + 商城补满星卡 */
+  challenge: ['challenge'] as const,
 }
 
 /**
@@ -167,6 +169,8 @@ export function useTaskActions() {
     // 活跃 / 满星是"完成任务"这一下才变的：不刷它，孩子做完任务
     // 签到卡上的「活跃」还是灰的，连续天数也停在昨天
     qc.invalidateQueries({ queryKey: ['signin'] })
+    // 满星是挑战的计分依据（016）：不刷挑战，进度条会停在昨天
+    qc.invalidateQueries({ queryKey: qk.challenge })
     qc.invalidateQueries({ queryKey: qk.bootstrap })
   }, [qc])
 
@@ -267,6 +271,7 @@ function useSigninInvalidate() {
     qc.invalidateQueries({ queryKey: ['ledger'] })
     qc.invalidateQueries({ queryKey: ['signin'] })
     qc.invalidateQueries({ queryKey: ['badges'] })
+    qc.invalidateQueries({ queryKey: qk.challenge })
   }, [qc])
 }
 
@@ -286,6 +291,50 @@ export function useRetroCard() {
     mutationFn: (v: { kind: RetroCardKind; date: Ymd; memberId?: string | null }) =>
       api.applyRetroCard(v.kind, v.date, v.memberId ?? null),
     onSuccess: invalidate,
+  })
+}
+
+/** 满星挑战（016）：可开的挑战规格 + 当前挑战进度 + 商城补满星卡 */
+export function useChallengeState() {
+  return useQuery({
+    queryKey: qk.challenge,
+    queryFn: api.challengeState,
+    staleTime: 5_000,
+  })
+}
+
+/** 开启挑战。付入场分（后端扣），成功后刷新挑战 / 余额 / 流水 */
+export function useStartChallenge() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (kind: api.ChallengeKind) => api.startChallenge(kind),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.challenge })
+      qc.invalidateQueries({ queryKey: ['ledger'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/**
+ * 失败预警后的补救：买一张满星卡 + 立刻补在漏掉那天。
+ * 两步都是既有能力（013 商城 redeem / 010 use_retro_card），这里只是串起来 ——
+ * 补完那天满星数回升，挑战进度在下次读取时自动恢复可行，不需要"复活"接口。
+ */
+export function useRescueChallenge() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { itemId: string; day: Ymd }) => {
+      await api.redeem(v.itemId, 1)
+      await api.applyRetroCard('retro_fullstar', v.day)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.challenge })
+      qc.invalidateQueries({ queryKey: ['signin'] })
+      qc.invalidateQueries({ queryKey: ['ledger'] })
+      qc.invalidateQueries({ queryKey: ['redemptions'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
   })
 }
 
