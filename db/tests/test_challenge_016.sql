@@ -56,8 +56,8 @@ begin
   -- 必须用 jsonb_typeof 判类型（或 ->> 转文本再判）
   assert jsonb_typeof(v_state->'current') = 'null',
     format('S0 家长应无挑战，实际 current=%s', v_state->'current');
-  assert jsonb_array_length(v_state->'specs') = 2, 'S0 specs 应有两条';
-  raise notice '✓ S0 家长视角 current=null，specs=2';
+  assert jsonb_array_length(v_state->'specs') = 4, 'S0 specs 应有四条（满星21/45 + 签到21/45）';
+  raise notice '✓ S0 家长视角 current=null，specs=4';
 
   -- S1 孩子开 21 天挑战 → 扣 20 分
   perform set_config('request.jwt.claims',

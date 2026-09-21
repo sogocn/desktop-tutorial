@@ -6,10 +6,16 @@ import { BackendError } from '@/lib/backend/types'
 import { buzz, celebrate } from '@/lib/celebrate'
 import { cn } from '@/lib/cn'
 import { formatMd } from '@/lib/date'
-import type { ChallengeCurrent, ChallengeSpec } from '@/api'
+import type { ChallengeCategory, ChallengeCurrent, ChallengeSpec } from '@/api'
 
 /**
- * 挑战任务（016 满星 / 017 按类互斥）。
+ * 不同类挑战统计的"达标维度"用词不同：满星类看「满星」、签到类看「签到」。
+ * 后端判定维度已按类切换（018），前端展示文案也要跟着切，不能写死"满星"。
+ */
+const METRIC_WORD: Record<ChallengeCategory, string> = { fullstar: '满星', signin: '签到' }
+
+/**
+ * 挑战任务（016 满星 / 017 按类互斥 / 018 连续签到）。
  *
  * 只给孩子（me.role === 'child'）：挑战是自己的事，家长视角不显示——
  * 和签到卡一样，家长"视孩子"看的是家长自己的数据。
@@ -37,7 +43,6 @@ export function ChallengeCard() {
   const closed = currents.filter((c) => c.status !== 'active')
   const specs = state?.specs ?? []
   const isChild = me?.role === 'child'
-  const card = state?.fullstar_card_item
 
   // 刚判成功那一次弹个庆祝（下次读取 just_succeeded 会回到 false，不会反复弹）
   const justSucceeded = currents.some((c) => c.just_succeeded)
@@ -62,10 +67,10 @@ export function ChallengeCard() {
   }
 
   async function onRescue(c: ChallengeCurrent) {
-    if (!card || !c.latest_missed_day) return
+    if (!c.retro_card_item || !c.latest_missed_day) return
     setErr('')
     try {
-      await rescue.mutateAsync({ itemId: card.id, day: c.latest_missed_day })
+      await rescue.mutateAsync({ itemId: c.retro_card_item.id, day: c.latest_missed_day })
       buzz()
       celebrate('small')
     } catch (e) {
@@ -110,7 +115,7 @@ export function ChallengeCard() {
                       c.failing ? 'text-rose-600' : 'text-slate-400',
                     )}
                   >
-                    满星 {c.fullstar_days}/{c.required_fullstar}
+                    {METRIC_WORD[c.category]} {c.fullstar_days}/{c.required_fullstar}
                     <ChevronRight size={12} />
                   </span>
                 </div>
@@ -151,7 +156,7 @@ export function ChallengeCard() {
                         /{c.required_fullstar}
                       </span>
                     </p>
-                    <p className="text-xs text-slate-400">满星天数</p>
+                    <p className="text-xs text-slate-400">{METRIC_WORD[c.category]}天数</p>
                   </div>
                   <div>
                     <p
@@ -182,34 +187,36 @@ export function ChallengeCard() {
                     已经漏了 {c.missed_days} 天，超过容错 {c.allowed_miss} 天
                   </p>
                   <p className="mt-1 text-xs text-rose-600">
-                    剩下的天数不够凑满 {c.required_fullstar} 天满星了，这次挑战要失败了。
-                    {card && c.latest_missed_day && (
+                    剩下的天数不够凑满 {c.required_fullstar} 天{METRIC_WORD[c.category]}了，这次挑战要失败了。
+                    {c.retro_card_item && c.latest_missed_day && (
                       <>
                         <br />
-                        要不要买一张「{card.name}」补上 {formatMd(c.latest_missed_day)}
+                        要不要买一张「{c.retro_card_item.name}」补上 {formatMd(c.latest_missed_day)}
                         ，让挑战继续？
                       </>
                     )}
                   </p>
-                  {card && c.latest_missed_day && (
+                  {c.retro_card_item && c.latest_missed_day && (
                     <Button
                       size="sm"
                       className="mt-2.5"
                       disabled={rescue.isPending}
                       onClick={() => onRescue(c)}
                     >
-                      {rescue.isPending ? '处理中…' : `购买满星卡补救（${card.price} 分）`}
+                      {rescue.isPending
+                        ? '处理中…'
+                        : `购买${c.retro_card_item.name}补救（${c.retro_card_item.price} 分）`}
                     </Button>
                   )}
-                  {!card && (
+                  {!c.retro_card_item && (
                     <p className="mt-2 text-xs text-slate-500">
-                      商城里没有在售的补满星卡，先请家长上架一张。
+                      商城里没有在售的{c.reward_card_label}，先请家长上架一张。
                     </p>
                   )}
                 </div>
               ) : (
                 <p className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
-                  凑满 {c.required_fullstar} 天满星就能拿 {c.reward_points} 分和
+                  凑满 {c.required_fullstar} 天{METRIC_WORD[c.category]}就能拿 {c.reward_points} 分和
                   {c.reward_card_label}！
                 </p>
               )}
@@ -247,8 +254,8 @@ export function ChallengeCard() {
                       </span>
                     </div>
                     <p className="mt-1.5 text-xs text-slate-500">
-                      {s.category_label}类 · {s.window_days} 天内累计满星 ≥ {s.required_fullstar}{' '}
-                      天
+                      {s.category_label}类 · {s.window_days} 天内累计{METRIC_WORD[s.category]} ≥{' '}
+                      {s.required_fullstar} 天
                       <br />
                       最多可以漏 {s.allowed_miss} 天，漏多了就补不回来了
                     </p>

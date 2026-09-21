@@ -402,13 +402,14 @@ export const applyRetroCard = (kind: RetroCardKind, date: Ymd, memberId?: string
   })
 
 // ---------------------------------------------------------------------------
-// 挑战（016 满星 / 017 按类互斥）
+// 挑战（016 满星 / 017 按类互斥 / 018 连续签到）
 // ---------------------------------------------------------------------------
-// 判定全在后端：进度从 member_day.fullstar 派生，成功/失败惰性落库。
-// 前端只负责展示 + 触发两个动作：开启=付入场分；补救=买满星卡 + 补满星（两者都是既有能力）。
+// 判定全在后端：进度从 member_day.fullstar / member_day.signed 派生，成功/失败惰性落库。
+// 前端只负责展示 + 触发两个动作：开启=付入场分；补救=买对应类的补救卡 + 补对应维度。
 // 017 起同一「类」（连续满星 / 连续签到）同一时间只能有一条进行中，但不同类可并行、
 // 结束后可以再开 —— 互斥判定由后端 unique index + start_challenge 双保险负责。
-export type ChallengeKind = 'fullstar_21' | 'fullstar_45'
+// 018 起补救卡按类提供（current.retro_card_item）：满星类→补满星卡，签到类→补签卡。
+export type ChallengeKind = 'fullstar_21' | 'fullstar_45' | 'signin_21' | 'signin_45'
 /** 挑战的「类」：同一类同一时间只能有一个进行中，不同类可以并行 */
 export type ChallengeCategory = 'fullstar' | 'signin'
 
@@ -452,6 +453,8 @@ export interface ChallengeCurrent {
   reward_card_label: string
   /** 本次读取刚判成功（用于弹一次庆祝；下次读取回到 false） */
   just_succeeded: boolean
+  /** 该类失败补救要买的卡（按类选：满星→补满星卡，签到→补签卡）；没上架则 null */
+  retro_card_item: { id: string; name: string; price: number; kind: string } | null
 }
 
 export interface ChallengeState {
