@@ -402,14 +402,20 @@ export const applyRetroCard = (kind: RetroCardKind, date: Ymd, memberId?: string
   })
 
 // ---------------------------------------------------------------------------
-// 满星挑战（016）
+// 挑战（016 满星 / 017 按类互斥）
 // ---------------------------------------------------------------------------
 // 判定全在后端：进度从 member_day.fullstar 派生，成功/失败惰性落库。
 // 前端只负责展示 + 触发两个动作：开启=付入场分；补救=买满星卡 + 补满星（两者都是既有能力）。
+// 017 起同一「类」（连续满星 / 连续签到）同一时间只能有一条进行中，但不同类可并行、
+// 结束后可以再开 —— 互斥判定由后端 unique index + start_challenge 双保险负责。
 export type ChallengeKind = 'fullstar_21' | 'fullstar_45'
+/** 挑战的「类」：同一类同一时间只能有一个进行中，不同类可以并行 */
+export type ChallengeCategory = 'fullstar' | 'signin'
 
 export interface ChallengeSpec {
   kind: ChallengeKind
+  category: ChallengeCategory
+  category_label: string
   title: string
   window_days: number
   required_fullstar: number
@@ -418,11 +424,15 @@ export interface ChallengeSpec {
   reward_points: number
   reward_card: RetroCardKind
   reward_card_label: string
+  /** 这个类已经有一条进行中的挑战 → 前端禁用"开启"（同类互斥，可重复开始） */
+  busy: boolean
 }
 
 export interface ChallengeCurrent {
   id: string
   kind: ChallengeKind
+  category: ChallengeCategory
+  category_label: string
   status: 'active' | 'succeeded' | 'failed'
   started_on: Ymd
   ends_on: Ymd
@@ -446,6 +456,9 @@ export interface ChallengeCurrent {
 
 export interface ChallengeState {
   specs: ChallengeSpec[]
+  /** 每个类各一条（当前/最近一次）；还没有挑战时为空数组 */
+  currents: ChallengeCurrent[]
+  /** 兼容字段：currents 里优先 active 的那条，没有则 null */
   current: ChallengeCurrent | null
   /** 商城在售的补满星卡；没有则前端隐藏「购买补救」入口 */
   fullstar_card_item: { id: string; name: string; price: number } | null
@@ -457,6 +470,7 @@ export const startChallenge = (kind: ChallengeKind) =>
   rpc<{
     challenge_id: string
     kind: ChallengeKind
+    category: ChallengeCategory
     status: string
     started_on: Ymd
     ends_on: Ymd
