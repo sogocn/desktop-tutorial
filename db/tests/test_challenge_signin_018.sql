@@ -14,8 +14,11 @@
 
 begin;
 
-insert into app.families (id, name, timezone, day_cutoff_hour, child_daily_points_cap) values
-  ('f0180000-0000-4000-8000-000000000001', '签到之家', 'Asia/Shanghai', 0, 0);
+-- fullstar_points 显式设 0：025 起"当天满星"会额外发一笔奖励，本文件只测连续签到挑战，
+-- 关掉它免得余额断言被那 30 分顶偏（满星奖励本身由 test_fullstar_points_025 覆盖）
+insert into app.families (id, name, timezone, day_cutoff_hour, child_daily_points_cap,
+                          fullstar_points) values
+  ('f0180000-0000-4000-8000-000000000001', '签到之家', 'Asia/Shanghai', 0, 0, 0);
 
 insert into app.members (id, family_id, user_id, nickname, role) values
   ('f0180000-0000-4000-8000-00000000000a', 'f0180000-0000-4000-8000-000000000001',

@@ -445,6 +445,7 @@ const SOURCE_LABELS: Record<string, string> = {
   reversal: '撤销',
   signin: '签到',
   streak: '连续奖励',
+  fullstar: '满星',
 }
 
 function LedgerList({ memberId }: { memberId: string | null }) {

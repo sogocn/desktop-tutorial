@@ -8,8 +8,11 @@ begin;
 
 -- 独立家庭，id 带 013 后缀，避免和别的 suite 撞
 -- child_daily_points_cap = 0 = 不限，免得日上限把断言搅乱
-insert into app.families (id, name, timezone, day_cutoff_hour, child_daily_points_cap) values
-  ('f0000000-0000-4000-8000-000000000013', '积分之家', 'Asia/Shanghai', 0, 0);
+-- fullstar_points 显式设 0：025 起"当天满星"会额外发一笔奖励，本文件只测商城/勋章/打卡计分，
+-- 关掉它免得每条余额断言都被那 30 分顶偏（满星奖励本身由 test_fullstar_points_025 覆盖）
+insert into app.families (id, name, timezone, day_cutoff_hour, child_daily_points_cap,
+                          fullstar_points) values
+  ('f0000000-0000-4000-8000-000000000013', '积分之家', 'Asia/Shanghai', 0, 0, 0);
 
 insert into app.members (id, family_id, user_id, nickname, role) values
   ('a0000000-0000-4000-8000-000000000013', 'f0000000-0000-4000-8000-000000000013',

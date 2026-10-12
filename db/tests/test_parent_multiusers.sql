@@ -25,8 +25,11 @@ begin;
 -- ###########################################################################
 do $$
 begin
-  insert into app.families (id, name, timezone, day_cutoff_hour)
-  values ('61111111-1111-1111-1111-111111111111', '多选之家', 'Asia/Shanghai', 0);
+  -- fullstar_points 显式设 0：025 起"当天满星"会额外发一笔奖励，本文件只测
+  -- 家长改删 / 多人指派 / 完成即打卡，关掉它免得余额断言被那 30 分顶偏
+  -- （满星奖励本身由 test_fullstar_points_025 覆盖）
+  insert into app.families (id, name, timezone, day_cutoff_hour, fullstar_points)
+  values ('61111111-1111-1111-1111-111111111111', '多选之家', 'Asia/Shanghai', 0, 0);
 
   insert into app.members (id, family_id, user_id, nickname, role) values
     ('62222222-2222-2222-2222-222222222222', '61111111-1111-1111-1111-111111111111',
