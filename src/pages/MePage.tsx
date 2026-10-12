@@ -1,9 +1,17 @@
-import { useQueryClient } from '@tanstack/react-query'
+﻿import { useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronRight, Coins, Copy, Download, Lock, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import * as api from '@/api'
 import { Button, Card, Empty, Field, Input, Sheet, Spinner } from '@/components/ui'
-import { qk, useBootstrap, useMe, useRedemptions, useSetFamilySettings, useSkipRequests } from '@/hooks/useApp'
+import { SkinPriceSheet } from '@/components/SkinPriceSheet'
+import {
+  qk,
+  useBootstrap,
+  useMe,
+  useRedemptions,
+  useSetFamilySettings,
+  useSkipRequests,
+} from '@/hooks/useApp'
 import { getBackend } from '@/lib/backend'
 import { BackendError } from '@/lib/backend/types'
 import { copyText } from '@/lib/clipboard'
@@ -20,6 +28,7 @@ export default function MePage() {
   const [pinSheet, setPinSheet] = useState(false)
   const [approvals, setApprovals] = useState(false)
   const [rewardOpen, setRewardOpen] = useState(false)
+  const [skinPriceOpen, setSkinPriceOpen] = useState(false)
 
   if (!boot?.in_family || !me) return <Spinner />
   const isParent = me.role === 'parent'
@@ -29,12 +38,12 @@ export default function MePage() {
     <div className="mx-auto w-full max-w-md">
       <div className="pt-safe px-4 pb-3">
         <div className="mt-2 flex items-center gap-3.5">
-          <span className="flex size-16 items-center justify-center rounded-2xl bg-white text-3xl shadow-sm">
+          <span className="flex size-16 items-center justify-center rounded-2xl bg-surface text-3xl shadow-sm">
             {me.avatar_emoji}
           </span>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-slate-900">{me.nickname}</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-xl font-bold text-fg">{me.nickname}</h1>
+            <p className="text-sm text-muted">
               {boot.family?.name} · {isParent ? '家长' : '成员'}
               {me.role === 'child' && ` · ${me.points_balance} 分`}
             </p>
@@ -45,17 +54,17 @@ export default function MePage() {
       <div className="space-y-5 px-4 pb-28">
         {/* 成员 */}
         <section>
-          <h2 className="mb-2 px-1 text-sm font-semibold text-slate-900">家庭成员</h2>
+          <h2 className="mb-2 px-1 text-sm font-semibold text-fg">家庭成员</h2>
           <div className="space-y-2">
             {boot.members?.map((m) => (
               <Card key={m.id} className="flex items-center gap-3 py-3">
                 <span className="text-2xl">{m.avatar_emoji}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-fg">
                     {m.nickname}
-                    {m.id === me.id && <span className="ml-1.5 text-xs text-slate-400">（我）</span>}
+                    {m.id === me.id && <span className="ml-1.5 text-xs text-muted">（我）</span>}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted">
                     {m.role === 'parent' ? '家长' : '孩子'}
                     {m.role === 'child' && ` · ${m.points_balance} 分`}
                     {m.role === 'parent' && m.has_pin && ' · 已设 PIN'}
@@ -70,7 +79,7 @@ export default function MePage() {
         {/* 邀请码 */}
         {(boot.invites?.length ?? 0) > 0 && (
           <section>
-            <h2 className="mb-2 px-1 text-sm font-semibold text-slate-900">邀请码</h2>
+            <h2 className="mb-2 px-1 text-sm font-semibold text-fg">邀请码</h2>
             <div className="space-y-2">
               {boot.invites?.map((i) => (
                 <InviteRow key={i.id} code={i.code} role={i.role} claim={!!i.member_id} />
@@ -82,7 +91,7 @@ export default function MePage() {
         {/* 家长专区 */}
         {isParent && (
           <section>
-            <h2 className="mb-2 px-1 text-sm font-semibold text-slate-900">家长设置</h2>
+            <h2 className="mb-2 px-1 text-sm font-semibold text-fg">家长设置</h2>
             <div className="space-y-2">
               <RowButton
                 icon={<Lock size={18} />}
@@ -106,13 +115,19 @@ export default function MePage() {
                 }
                 onClick={() => setRewardOpen(true)}
               />
+              <RowButton
+                icon={<Coins size={18} />}
+                label="皮肤定价"
+                hint="给每个孩子兑换的皮肤定个价，默认价也能改"
+                onClick={() => setSkinPriceOpen(true)}
+              />
             </div>
           </section>
         )}
 
         {/* 数据 */}
         <section>
-          <h2 className="mb-2 px-1 text-sm font-semibold text-slate-900">数据</h2>
+          <h2 className="mb-2 px-1 text-sm font-semibold text-fg">数据</h2>
           <div className="space-y-2">
             {import.meta.env.VITE_BACKEND !== 'server' && (
               <RowButton
@@ -168,7 +183,7 @@ export default function MePage() {
           </div>
         </section>
 
-        <p className="pt-2 text-center text-xs text-slate-400">
+        <p className="pt-2 text-center text-xs text-muted">
           数据保存在服务器，用用户名 + PIN 可在任意设备登录同一份家庭数据
         </p>
       </div>
@@ -176,6 +191,7 @@ export default function MePage() {
       <PinSheet open={pinSheet} onClose={() => setPinSheet(false)} hasPin={me.has_pin} />
       <ApprovalsSheet open={approvals} onClose={() => setApprovals(false)} />
       <RewardSettingsSheet open={rewardOpen} onClose={() => setRewardOpen(false)} />
+      <SkinPriceSheet open={skinPriceOpen} onClose={() => setSkinPriceOpen(false)} />
     </div>
   )
 }
@@ -227,14 +243,14 @@ function RewardSettingsSheet({ open, onClose }: { open: boolean; onClose: () => 
       }
     >
       <div className="space-y-4">
-        <div className="rounded-2xl bg-slate-50 p-4">
-          <p className="text-sm font-medium text-slate-700">现金兑换比例</p>
-          <p className="mt-1 text-xs text-slate-500">
+        <div className="rounded-2xl bg-app p-4">
+          <p className="text-sm font-medium text-fg">现金兑换比例</p>
+          <p className="mt-1 text-xs text-muted">
             孩子用积分换零花钱时，每 <span className="font-semibold">1 元</span> 需要的积分。
             调小 = 孩子更容易换到钱；调大 = 更"值钱"。
           </p>
-          <p className="mt-2 text-sm text-slate-500">
-            当前：<span className="font-semibold text-slate-900">{current} 积分 = 1 元</span>
+          <p className="mt-2 text-sm text-muted">
+            当前：<span className="font-semibold text-fg">{current} 积分 = 1 元</span>
           </p>
         </div>
 
@@ -252,7 +268,7 @@ function RewardSettingsSheet({ open, onClose }: { open: boolean; onClose: () => 
           />
         </Field>
 
-        <p className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">
+        <p className="rounded-xl bg-app px-3.5 py-2.5 text-sm text-muted">
           参考：签到最易得、满星最难，补满星卡定价也最高。比例改了只影响之后的兑换，
           已兑换的不追溯。
         </p>
@@ -282,23 +298,23 @@ function RowButton({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200/70 bg-white p-3.5 text-left shadow-sm active:scale-[0.99]"
+      className="flex w-full items-center gap-3 rounded-2xl border border-line/70 bg-surface p-3.5 text-left shadow-sm active:scale-[0.99]"
     >
       <span
         className={cn(
           'flex size-9 shrink-0 items-center justify-center rounded-xl',
-          danger ? 'bg-rose-50 text-rose-500' : warn ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-600',
+          danger ? 'bg-rose-50 text-rose-500' : warn ? 'bg-amber-50 text-amber-600' : 'bg-surface2 text-muted',
         )}
       >
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cn('block font-medium', danger ? 'text-rose-600' : 'text-slate-900')}>
+        <span className={cn('block font-medium', danger ? 'text-rose-600' : 'text-fg')}>
           {label}
         </span>
-        {hint && <span className="block text-xs text-slate-400">{hint}</span>}
+        {hint && <span className="block text-xs text-muted">{hint}</span>}
       </span>
-      <ChevronRight size={18} className="shrink-0 text-slate-300" />
+      <ChevronRight size={18} className="shrink-0 text-muted" />
     </button>
   )
 }
@@ -308,8 +324,8 @@ function InviteRow({ code, role, claim }: { code: string; role: string; claim: b
   return (
     <Card className="flex items-center gap-3 py-3">
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-lg font-bold tracking-[0.2em] text-slate-900">{code}</p>
-        <p className="text-xs text-slate-400">
+        <p className="font-mono text-lg font-bold tracking-[0.2em] text-fg">{code}</p>
+        <p className="text-xs text-muted">
           {claim ? '认领码（指定成员专用）' : role === 'parent' ? '家长邀请码' : '孩子邀请码'}
         </p>
       </div>
@@ -392,7 +408,7 @@ function PinSheet({ open, onClose, hasPin }: { open: boolean; onClose: () => voi
             className="text-center text-xl tracking-[0.4em]"
           />
         </Field>
-        <p className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm leading-relaxed text-slate-500">
+        <p className="rounded-xl bg-app px-3.5 py-2.5 text-sm leading-relaxed text-muted">
           连续输错 5 次会锁 15 分钟。PIN 只有 4 位，真正管用的是这个限制。
         </p>
         {ok && <p className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700">已保存</p>}
@@ -447,16 +463,16 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
           <>
             {pending.length > 0 && (
               <div className="space-y-2.5">
-                <p className="text-xs font-medium text-slate-500">兑换申请</p>
+                <p className="text-xs font-medium text-muted">兑换申请</p>
                 {pending.map((r) => (
                   <Card key={r.id} className="space-y-3">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{r.snap_emoji}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-slate-900">
+                        <p className="font-medium text-fg">
                           {r.snap_name} × {Number(r.quantity)}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted">
                           {r.points_cost} 分 ·{' '}
                           {new Date(r.requested_at).toLocaleString('zh-CN', {
                             month: 'numeric',
@@ -491,16 +507,16 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
 
             {skipPending.length > 0 && (
               <div className="space-y-2.5">
-                <p className="text-xs font-medium text-slate-500">请假申请（孩子提交，需家长同意）</p>
+                <p className="text-xs font-medium text-muted">请假申请（孩子提交，需家长同意）</p>
                 {skipPending.map((s) => (
                   <Card key={s.id} className="space-y-3">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{s.task_emoji}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-slate-900">
+                        <p className="font-medium text-fg">
                           {s.assignee_name} 申请请假 · {s.task_title}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted">
                           {formatFull(s.occurrence_date)}
                           {s.note ? ` · ${s.note}` : ''}
                         </p>

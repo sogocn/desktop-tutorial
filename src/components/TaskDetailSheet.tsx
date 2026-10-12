@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Button, Sheet } from '@/components/ui'
 import { useDeleteTask, useMe, useTaskActions } from '@/hooks/useApp'
 import { getTask } from '@/api'
@@ -72,8 +72,8 @@ export function TaskDetailSheet({
         <div className="flex items-center gap-2">
           <span className="text-2xl">{entry.icon_emoji}</span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-semibold text-slate-900">{entry.title}</p>
-            <p className="text-xs text-slate-400">
+            <p className="truncate text-lg font-semibold text-fg">{entry.title}</p>
+            <p className="text-xs text-muted">
               {formatFull(entry.occurrence_date)} ·{' '}
               {isRecurring ? '循环任务' : entry.is_deadline_style ? '到期任务' : '单次任务'}
             </p>
@@ -91,14 +91,14 @@ export function TaskDetailSheet({
               打卡 +{entry.checkin_points}
             </span>
           )}
-          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-slate-500">
+          <span className="rounded-md bg-surface2 px-1.5 py-0.5 text-muted">
             {done ? '已完成' : skipped ? '已请假' : '待完成'}
           </span>
         </div>
 
         {/* 家长：编辑 / 删除 */}
         {isParent && (
-          <div className="space-y-2 border-t border-slate-100 pt-4">
+          <div className="space-y-2 border-t border-line pt-4">
             <Button
               variant="outline"
               className="w-full"
@@ -138,7 +138,7 @@ export function TaskDetailSheet({
 
         {/* 任何人：撤销 / 请假 */}
           {!isParent && (
-          <div className="space-y-2 border-t border-slate-100 pt-4">
+          <div className="space-y-2 border-t border-line pt-4">
             {done ? (
               <Button
                 variant="outline"

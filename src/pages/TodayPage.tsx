@@ -1,4 +1,4 @@
-import { AlarmClock, ChevronLeft, ChevronRight } from 'lucide-react'
+﻿import { AlarmClock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ChallengeCard } from '@/components/ChallengeCard'
 import { SigninCard } from '@/components/SigninCard'
@@ -6,7 +6,7 @@ import { TaskCard } from '@/components/TaskCard'
 import { TaskDetailSheet } from '@/components/TaskDetailSheet'
 import { TaskFormSheet } from '@/components/TaskFormSheet'
 import { Empty, Spinner } from '@/components/ui'
-import { useBootstrap, useCalendar, useMe, useViewingMember } from '@/hooks/useApp'
+import { useBootstrap, useCalendar, useCurrentSkin, useMe, useViewingMember } from '@/hooks/useApp'
 import { cn } from '@/lib/cn'
 import { addDays, formatFull, relativeDay, type Ymd } from '@/lib/date'
 import { useSession } from '@/store/session'
@@ -17,6 +17,8 @@ export default function TodayPage() {
   const me = useMe()
   const viewing = useViewingMember()
   const setViewingMember = useSession((s) => s.setViewingMember)
+  // 当前皮肤：首页头图用（和日历页同一张图）
+  const skin = useCurrentSkin()
 
   const today = boot?.today ?? ''
   const [date, setDate] = useState<Ymd | null>(null)
@@ -49,30 +51,30 @@ export default function TodayPage() {
   return (
     <div className="mx-auto w-full max-w-md">
       {/* 头部 */}
-      <div className="pt-safe sticky top-0 z-20 bg-slate-50/85 px-4 pb-2 backdrop-blur-lg">
+      <div className="pt-safe sticky top-0 z-20 bg-app/85 px-4 pb-2 backdrop-blur-lg">
         <div className="flex items-center justify-between pt-2">
           <div>
-            <p className="text-xs font-medium text-slate-400">{relativeDay(cur, today)}</p>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{formatFull(cur)}</h1>
+            <p className="text-xs font-medium text-muted">{relativeDay(cur, today)}</p>
+            <h1 className="text-2xl font-bold tracking-tight text-fg">{formatFull(cur)}</h1>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setDate(addDays(cur, -1))}
-              className="rounded-full p-2 text-slate-500 active:bg-slate-200"
+              className="rounded-full p-2 text-muted active:bg-surface2"
             >
               <ChevronLeft size={20} />
             </button>
             {cur !== today && (
               <button
                 onClick={() => setDate(null)}
-                className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white"
+                className="rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-white"
               >
                 今天
               </button>
             )}
             <button
               onClick={() => setDate(addDays(cur, 1))}
-              className="rounded-full p-2 text-slate-500 active:bg-slate-200"
+              className="rounded-full p-2 text-muted active:bg-surface2"
             >
               <ChevronRight size={20} />
             </button>
@@ -88,7 +90,7 @@ export default function TodayPage() {
                 onClick={() => setViewingMember(c.id)}
                 className={cn(
                   'flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-medium transition',
-                  viewing?.id === c.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600',
+                  viewing?.id === c.id ? 'bg-primary text-white' : 'bg-surface text-muted',
                 )}
               >
                 <span className="text-base">{c.avatar_emoji}</span>
@@ -99,7 +101,7 @@ export default function TodayPage() {
               onClick={() => setViewingMember(me.id)}
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-medium transition',
-                viewing?.id === me.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600',
+                viewing?.id === me.id ? 'bg-primary text-white' : 'bg-surface text-muted',
               )}
             >
               <span className="text-base">{me.avatar_emoji}</span>
@@ -110,26 +112,36 @@ export default function TodayPage() {
       </div>
 
       <div className="space-y-4 px-4 pb-28 pt-1">
+        {/* 皮肤头图：3:1 宽幅横幅，<img> 按原比例整张渲染，不裁切（和日历页同一张） */}
+        {skin?.theme.banner && (
+          <img
+            src={skin.theme.banner}
+            alt=""
+            className="block w-full rounded-2xl ring-1 ring-line"
+          />
+        )}
+
         {/* 进度条 */}
         {todayList.length > 0 && (
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
+          <div className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-slate-200/60">
             <div className="flex items-baseline justify-between">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted">
                 {viewing?.nickname} 今天的进度
               </p>
-              <p className="text-sm font-semibold text-slate-900">
+              <p className="text-sm font-semibold text-fg">
                 {doneCount}
-                <span className="text-slate-400"> / {todayList.length}</span>
+                <span className="text-muted"> / {todayList.length}</span>
               </p>
             </div>
-            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-surface2">
+              {/* 进度条用皮肤强调色，而不是写死的绿色 */}
               <div
-                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                className="h-full rounded-full bg-accent transition-all duration-500"
                 style={{ width: `${(doneCount / todayList.length) * 100}%` }}
               />
             </div>
             {doneCount === todayList.length && (
-              <p className="mt-2.5 text-sm font-medium text-emerald-600">
+              <p className="mt-2.5 text-sm font-medium text-primary">
                 🎊 今天全部做完了，厉害！
               </p>
             )}
@@ -145,7 +157,7 @@ export default function TodayPage() {
         {/* deadline 倒计时 */}
         {deadlines.length > 0 && (
           <div className="space-y-2">
-            <p className="px-1 text-xs font-medium text-slate-400">重要截止</p>
+            <p className="px-1 text-xs font-medium text-muted">重要截止</p>
             {deadlines.map((d) => (
               <DeadlineBar key={`${d.task_id}-${d.occurrence_date}`} entry={d} today={today} />
             ))}
@@ -190,15 +202,15 @@ function DeadlineBar({ entry, today }: { entry: CalendarEntry; today: Ymd }) {
     <div
       className={cn(
         'flex items-center gap-3 rounded-2xl px-4 py-3',
-        urgent ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-white shadow-sm ring-1 ring-slate-200/60',
+        urgent ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-surface shadow-sm ring-1 ring-slate-200/60',
       )}
     >
-      <AlarmClock size={18} className={urgent ? 'text-rose-500' : 'text-slate-400'} />
+      <AlarmClock size={18} className={urgent ? 'text-rose-500' : 'text-muted'} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900">
+        <p className="truncate text-sm font-medium text-fg">
           {entry.icon_emoji} {entry.title}
         </p>
-        <p className={cn('text-xs', urgent ? 'text-rose-600' : 'text-slate-400')}>
+        <p className={cn('text-xs', urgent ? 'text-rose-600' : 'text-muted')}>
           {rel}截止 · +{entry.completion_points} 分
         </p>
       </div>

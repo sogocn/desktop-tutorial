@@ -1,7 +1,15 @@
-import { CalendarCheck, Ticket } from 'lucide-react'
+﻿import { CalendarCheck, Ticket } from 'lucide-react'
 import { useState } from 'react'
+import { SkinMotif } from '@/components/SkinIcon'
 import { Button, Empty, Field, Input, Sheet } from '@/components/ui'
-import { useBootstrap, useMe, useRetroCard, useSignin, useSigninSummary } from '@/hooks/useApp'
+import {
+  useBootstrap,
+  useCurrentSkin,
+  useMe,
+  useRetroCard,
+  useSignin,
+  useSigninSummary,
+} from '@/hooks/useApp'
 import { BackendError } from '@/lib/backend/types'
 import { buzz, celebrate } from '@/lib/celebrate'
 import { cn } from '@/lib/cn'
@@ -94,15 +102,15 @@ export function SigninCard() {
   }
 
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
+    <div className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-slate-200/60">
       {/* 标题行 + 签到按钮 */}
       <div className="flex items-center gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface2 text-muted">
           <CalendarCheck size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">今日签到</p>
-          <p className="truncate text-xs text-slate-400">
+          <p className="text-sm font-semibold text-fg">今日签到</p>
+          <p className="truncate text-xs text-muted">
             {me.avatar_emoji} {me.nickname} · {formatMd(today)}
           </p>
         </div>
@@ -126,23 +134,23 @@ export function SigninCard() {
       </div>
 
       {/* 补签卡 */}
-      <div className="mt-3.5 flex items-center gap-2.5 border-t border-slate-100 pt-3">
-        <Ticket size={16} className="shrink-0 text-slate-400" />
+      <div className="mt-3.5 flex items-center gap-2.5 border-t border-line pt-3">
+        <Ticket size={16} className="shrink-0 text-muted" />
         <div className="min-w-0 flex-1">
           {totalCards > 0 ? (
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-muted">
               {RETRO_KINDS.filter((k) => cards[k] > 0)
                 .map((k) => `${KIND_LABEL[k]} ${cards[k]} 张`)
                 .join(' · ')}
             </p>
           ) : (
-            <p className="text-xs text-slate-400">还没有补签卡，连续打卡可以攒</p>
+            <p className="text-xs text-muted">还没有补签卡，连续打卡可以攒</p>
           )}
         </div>
         <button
           onClick={() => setRetroOpen(true)}
           disabled={totalCards === 0}
-          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 transition active:scale-95 disabled:opacity-35"
+          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-muted transition active:scale-95 disabled:opacity-35"
         >
           用补签卡
         </button>
@@ -174,50 +182,58 @@ function StatusPill({
   done: boolean
   hint: string
 }) {
+  const skin = useCurrentSkin()
   return (
     <div
       className={cn(
         'flex flex-col items-center rounded-xl px-1.5 py-2.5 text-center transition',
-        done ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'bg-slate-50',
+        // 达成态改用皮肤强调色打底，不再是写死的绿色
+        done ? 'bg-accent/10 ring-1 ring-accent/30' : 'bg-app',
       )}
       title={hint}
     >
       <span className={cn('text-xl leading-none', !done && 'opacity-35 grayscale')}>{emoji}</span>
-      <p
-        className={cn(
-          'mt-1.5 text-[13px] font-medium',
-          done ? 'text-emerald-700' : 'text-slate-500',
-        )}
-      >
+      <p className={cn('mt-1.5 text-[13px] font-medium', done ? 'text-primary' : 'text-muted')}>
         {label}
       </p>
-      <p className={cn('text-[11px]', done ? 'text-emerald-600' : 'text-slate-400')}>
-        {done ? '✅ 已达成' : '⬜ 未达成'}
-      </p>
+      {/* 原本的 ✅ / ⬜ 换成皮肤专属记号，状态块就带上了该皮肤的视觉元素 */}
+      <span
+        className={cn(
+          'mt-0.5 flex items-center justify-center',
+          done ? 'text-accent' : 'text-muted',
+        )}
+      >
+        <SkinMotif skinKey={skin?.key} filled={done} className="h-3.5 w-3.5" />
+      </span>
     </div>
   )
 }
 
-/** 一行连续天数 + 到下一档（7 天一档）的进度 */
+/**
+ * 一行连续天数 + 到下一档（7 天一档）。
+ * 刻度直接用皮肤专属记号：一格 = 一天，实心 = 已达成。
+ * 取代原先那条固定天蓝色的细条，让连续天数这块图表随皮肤一起变样。
+ */
 function StreakRow({ label, days }: { label: string; days: number }) {
+  const skin = useCurrentSkin()
   const target = (Math.floor(days / MILESTONE_STEP) + 1) * MILESTONE_STEP
-  const inStage = days % MILESTONE_STEP
-  const pct = (inStage / MILESTONE_STEP) * 100
+  const rest = days % MILESTONE_STEP
+  // 刚卡满一档时 rest 会回到 0，但那一档其实是满的，要全亮
+  const filled = days === 0 ? 0 : rest === 0 ? MILESTONE_STEP : rest
 
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="text-xs text-slate-500">{label}</span>
-        <span className="text-xs text-slate-400">
-          <span className="font-semibold tabular-nums text-slate-800">{days}</span> 天
+        <span className="text-xs text-muted">{label}</span>
+        <span className="text-xs text-muted">
+          <span className="font-semibold tabular-nums text-fg">{days}</span> 天
           {days > 0 && ` · 还差 ${target - days} 天到 ${target} 天`}
         </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-sky-400 transition-all duration-500"
-          style={{ width: `${days === 0 ? 0 : Math.max(pct, 6)}%` }}
-        />
+      <div className={cn('mt-1 flex items-center gap-1', days > 0 ? 'text-accent' : 'text-muted')}>
+        {Array.from({ length: MILESTONE_STEP }, (_, i) => (
+          <SkinMotif key={i} skinKey={skin?.key} filled={i < filled} className="h-3.5 w-3.5" />
+        ))}
       </div>
     </div>
   )
@@ -305,7 +321,7 @@ function RetroSheet({
                     disabled={n === 0}
                     className={cn(
                       'flex flex-col items-center rounded-xl px-1.5 py-2.5 text-center transition active:scale-95',
-                      kind === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600',
+                      kind === k ? 'bg-primary text-white' : 'bg-surface2 text-muted',
                       n === 0 && 'opacity-35',
                     )}
                   >
@@ -314,7 +330,7 @@ function RetroSheet({
                     <span
                       className={cn(
                         'text-[11px] tabular-nums',
-                        kind === k ? 'text-slate-300' : 'text-slate-400',
+                        kind === k ? 'text-muted' : 'text-muted',
                       )}
                     >
                       {n} 张

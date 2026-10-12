@@ -12,6 +12,46 @@
   --color-task-slate: oklch(0.62 0.03 250);
 }
 
+/* 019 皮肤系统：主题语义色。值来自 JS 在运行时写到 :root 的 CSS 变量，
+   这里用 @theme inline 把它们桥接成 Tailwind 工具类（bg-app / text-fg / ...）。
+   默认值与 DEFAULT_THEME 一致，保证首屏（JS 还没跑）也不闪。 */
+@theme inline {
+  --color-app: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-on-primary-muted: var(--on-primary-muted);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-nav: var(--nav);
+  --color-accent: var(--accent);
+}
+
+/* 主题变量默认值（019）。JS 调 applyTheme() 会覆盖这些。 */
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  --primary: #0f172a;
+  --primary-hover: #1e293b;
+  --on-primary: #ffffff;
+  --on-primary-muted: rgba(255, 255, 255, 0.7);
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: rgba(226, 232, 240, 0.7);
+  --nav: rgba(255, 255, 255, 0.9);
+  --accent: #0ea5e9;
+  --app-pattern: none;
+  /* 皮肤专属大图，由 applyTheme() 按皮肤写入；没配皮肤时是 none */
+  --skin-photo: none;
+  /* 压在大图上的白色薄纱（024）。有大图时才由 applyTheme() 设值，
+     用来压住角色图里较深的色块，保证正文对比度；没有大图时保持 none。 */
+  --skin-veil: none;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -19,7 +59,11 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    /* 只留底色：图案 / 大图改由 <SkinBackdrop /> 那层 fixed 全屏层负责。
+       挂在这里的话 cover 会随 body 高度拉伸（见 SkinBackdrop 顶部注释）。 */
+    background-color: var(--bg);
+    color: var(--text);
+    @apply antialiased;
     /* 小孩会到处乱按，禁掉双击缩放和下拉刷新，不然操作一次跳一次 */
     overscroll-behavior-y: none;
     touch-action: manipulation;

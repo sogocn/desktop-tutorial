@@ -14,8 +14,11 @@ begin;
 -- ---------------------------------------------------------------------------
 -- 固定数据
 -- ---------------------------------------------------------------------------
-insert into app.families (id, name, timezone, day_cutoff_hour)
-values ('11111111-1111-1111-1111-111111111111', '测试之家', 'Asia/Shanghai', 0);
+-- 显式写死 child_daily_points_cap=200：
+-- 020 已把默认值改成 0（每日积分不设上限），但本文件的 E3/E4 专门验证
+-- "上限机制本身"，所以这里显式把闸打开，保持这部分断言的原语义不变。
+insert into app.families (id, name, timezone, day_cutoff_hour, child_daily_points_cap)
+values ('11111111-1111-1111-1111-111111111111', '测试之家', 'Asia/Shanghai', 0, 200);
 
 insert into app.members (id, family_id, user_id, nickname, role) values
   ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111',

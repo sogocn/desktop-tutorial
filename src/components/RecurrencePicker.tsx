@@ -1,4 +1,4 @@
-import { Chip } from '@/components/ui'
+﻿import { Chip } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { dayOfMonth, isoWeekday, WEEKDAY_LABELS, type Ymd } from '@/lib/date'
 import type { Recurrence, Task } from '@/types/db'
@@ -189,7 +189,7 @@ export function RecurrencePicker({
               onClick={() => set({ mode: m })}
               className={cn(
                 'flex flex-col items-center gap-0.5 rounded-xl py-2.5 transition active:scale-95',
-                value.mode === m ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600',
+                value.mode === m ? 'bg-primary text-white' : 'bg-surface2 text-muted',
               )}
             >
               <span className="text-lg">{info.emoji}</span>
@@ -197,7 +197,7 @@ export function RecurrencePicker({
               <span
                 className={cn(
                   'text-[10px]',
-                  value.mode === m ? 'text-slate-300' : 'text-slate-400',
+                  value.mode === m ? 'text-muted' : 'text-muted',
                 )}
               >
                 {info.hint}
@@ -209,21 +209,21 @@ export function RecurrencePicker({
 
       {/* 日期 */}
       <label className="block">
-        <span className="mb-1.5 block text-sm font-medium text-slate-700">
+        <span className="mb-1.5 block text-sm font-medium text-fg">
           {value.mode === 'deadline' ? '截止日期' : value.mode === 'once' ? '哪一天' : '从哪天开始'}
         </span>
         <input
           type="date"
           value={value.date}
           onChange={(e) => set({ date: e.target.value })}
-          className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-slate-900 focus:border-slate-900 focus:outline-none"
+          className="h-12 w-full rounded-xl border border-line bg-surface px-3.5 text-fg focus:border-primary focus:outline-none"
         />
       </label>
 
       {/* 星期选择 */}
       {value.mode === 'weekly' && (
         <div>
-          <p className="mb-1.5 text-sm font-medium text-slate-700">每周哪几天</p>
+          <p className="mb-1.5 text-sm font-medium text-fg">每周哪几天</p>
           <div className="grid grid-cols-7 gap-1.5">
             {WEEKDAY_LABELS.map((w, i) => {
               const n = i + 1
@@ -235,7 +235,7 @@ export function RecurrencePicker({
                   onClick={() => toggleWeekday(n)}
                   className={cn(
                     'aspect-square rounded-lg text-sm font-medium transition active:scale-95',
-                    on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500',
+                    on ? 'bg-primary text-white' : 'bg-surface2 text-muted',
                   )}
                 >
                   {w}
@@ -250,7 +250,7 @@ export function RecurrencePicker({
       {value.mode === 'monthly' && (
         <div className="space-y-3">
           <div>
-            <p className="mb-1.5 text-sm font-medium text-slate-700">每月哪几号</p>
+            <p className="mb-1.5 text-sm font-medium text-fg">每月哪几号</p>
             <div className="grid grid-cols-7 gap-1.5">
               {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => {
                 const on = value.bymonthday.includes(n)
@@ -261,7 +261,7 @@ export function RecurrencePicker({
                     onClick={() => toggleMonthday(n)}
                     className={cn(
                       'aspect-square rounded-lg text-[13px] font-medium transition active:scale-95',
-                      on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500',
+                      on ? 'bg-primary text-white' : 'bg-surface2 text-muted',
                     )}
                   >
                     {n}
@@ -274,7 +274,7 @@ export function RecurrencePicker({
           {/* 29/30/31 号才需要问这个，2 月没有 31 号 */}
           {value.bymonthday.some((d) => d > 28) && (
             <div>
-              <p className="mb-1.5 text-sm font-medium text-slate-700">遇到没有这天的月份</p>
+              <p className="mb-1.5 text-sm font-medium text-fg">遇到没有这天的月份</p>
               <div className="flex gap-2">
                 <Chip
                   active={value.monthOverflow === 'last_day'}
@@ -297,15 +297,15 @@ export function RecurrencePicker({
       {/* 结束日期 */}
       {isRecurring && (
         <label className="block">
-          <span className="mb-1.5 block text-sm font-medium text-slate-700">
-            重复到哪天为止 <span className="font-normal text-slate-400">（可不填）</span>
+          <span className="mb-1.5 block text-sm font-medium text-fg">
+            重复到哪天为止 <span className="font-normal text-muted">（可不填）</span>
           </span>
           <input
             type="date"
             value={value.endsOn ?? ''}
             min={value.date}
             onChange={(e) => set({ endsOn: e.target.value || null })}
-            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-slate-900 focus:border-slate-900 focus:outline-none"
+            className="h-12 w-full rounded-xl border border-line bg-surface px-3.5 text-fg focus:border-primary focus:outline-none"
           />
         </label>
       )}

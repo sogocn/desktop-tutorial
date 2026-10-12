@@ -1,4 +1,4 @@
-import { ChevronRight, Trophy } from 'lucide-react'
+﻿import { ChevronRight, Trophy } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button, Empty, Sheet } from '@/components/ui'
 import { useChallengeState, useMe, useRescueChallenge, useStartChallenge } from '@/hooks/useApp'
@@ -86,14 +86,14 @@ export function ChallengeCard() {
 
   return (
     <>
-      <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
+      <div className="rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-slate-200/60">
         <div className="flex items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface2 text-muted">
             <Trophy size={18} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900">挑战任务</p>
-            <p className="truncate text-xs text-slate-400">{sub}</p>
+            <p className="text-sm font-semibold text-fg">挑战任务</p>
+            <p className="truncate text-xs text-muted">{sub}</p>
           </div>
           <Button size="sm" onClick={() => setOpen(true)}>
             {actives.length ? '看进度' : '开启挑战'}
@@ -106,20 +106,20 @@ export function ChallengeCard() {
             {actives.map((c) => (
               <button key={c.id} className="w-full text-left" onClick={() => setOpen(true)}>
                 <div className="flex items-baseline justify-between text-xs">
-                  <span className="truncate font-medium text-slate-600">
+                  <span className="truncate font-medium text-muted">
                     {c.category_label} · 第 {c.elapsed}/{c.window_days} 天
                   </span>
                   <span
                     className={cn(
                       'flex shrink-0 items-center gap-0.5',
-                      c.failing ? 'text-rose-600' : 'text-slate-400',
+                      c.failing ? 'text-rose-600' : 'text-muted',
                     )}
                   >
                     {METRIC_WORD[c.category]} {c.fullstar_days}/{c.required_fullstar}
                     <ChevronRight size={12} />
                   </span>
                 </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface2">
                   <div
                     className={cn(
                       'h-full rounded-full transition-all duration-500',
@@ -141,42 +141,42 @@ export function ChallengeCard() {
           {/* 进行中：每类一块，含失败预警的补救入口 */}
           {actives.map((c) => (
             <div key={c.id} className="space-y-3">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-900">
+              <div className="rounded-2xl bg-app p-4">
+                <p className="text-sm font-semibold text-fg">
                   {c.category_label}挑战 · 进行中（第 {c.elapsed}/{c.window_days} 天）
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted">
                   {formatMd(c.started_on)} — {formatMd(c.ends_on)} · 每天把任务全部做完就是满星
                 </p>
                 <div className="mt-3 flex items-end gap-6">
                   <div>
-                    <p className="text-2xl font-bold tabular-nums text-slate-900">
+                    <p className="text-2xl font-bold tabular-nums text-fg">
                       {c.fullstar_days}
-                      <span className="text-base font-medium text-slate-400">
+                      <span className="text-base font-medium text-muted">
                         /{c.required_fullstar}
                       </span>
                     </p>
-                    <p className="text-xs text-slate-400">{METRIC_WORD[c.category]}天数</p>
+                    <p className="text-xs text-muted">{METRIC_WORD[c.category]}天数</p>
                   </div>
                   <div>
                     <p
                       className={cn(
                         'text-2xl font-bold tabular-nums',
-                        c.missed_days > c.allowed_miss ? 'text-rose-600' : 'text-slate-900',
+                        c.missed_days > c.allowed_miss ? 'text-rose-600' : 'text-fg',
                       )}
                     >
                       {c.missed_days}
-                      <span className="text-base font-medium text-slate-400">
+                      <span className="text-base font-medium text-muted">
                         /{c.allowed_miss}
                       </span>
                     </p>
-                    <p className="text-xs text-slate-400">已漏 / 容错</p>
+                    <p className="text-xs text-muted">已漏 / 容错</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold tabular-nums text-slate-900">
+                    <p className="text-2xl font-bold tabular-nums text-fg">
                       {c.remaining_days}
                     </p>
-                    <p className="text-xs text-slate-400">剩余天数</p>
+                    <p className="text-xs text-muted">剩余天数</p>
                   </div>
                 </div>
               </div>
@@ -209,7 +209,7 @@ export function ChallengeCard() {
                     </Button>
                   )}
                   {!c.retro_card_item && (
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-muted">
                       商城里没有在售的{c.reward_card_label}，先请家长上架一张。
                     </p>
                   )}
@@ -231,7 +231,7 @@ export function ChallengeCard() {
                 'rounded-xl px-3.5 py-2.5 text-sm',
                 c.status === 'succeeded'
                   ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-slate-100 text-slate-600',
+                  : 'bg-surface2 text-muted',
               )}
             >
               {c.status === 'succeeded'
@@ -246,14 +246,14 @@ export function ChallengeCard() {
               {specs.map((s) => {
                 const afford = (me?.points_balance ?? 0) >= s.entry_fee
                 return (
-                  <div key={s.kind} className="rounded-2xl bg-white p-4 ring-1 ring-slate-200/60">
+                  <div key={s.kind} className="rounded-2xl bg-surface p-4 ring-1 ring-slate-200/60">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-slate-900">{s.title}</p>
+                      <p className="text-sm font-semibold text-fg">{s.title}</p>
                       <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
                         入场 -{s.entry_fee} 分
                       </span>
                     </div>
-                    <p className="mt-1.5 text-xs text-slate-500">
+                    <p className="mt-1.5 text-xs text-muted">
                       {s.category_label}类 · {s.window_days} 天内累计{METRIC_WORD[s.category]} ≥{' '}
                       {s.required_fullstar} 天
                       <br />

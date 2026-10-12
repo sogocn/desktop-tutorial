@@ -48,9 +48,9 @@ export function Button({
         size === 'sm' && 'h-8 px-3 text-sm',
         size === 'md' && 'h-11 px-4 text-[15px]',
         size === 'lg' && 'h-13 px-5 text-base',
-        variant === 'primary' && 'bg-slate-900 text-white shadow-sm hover:bg-slate-800',
-        variant === 'outline' && 'border border-slate-300 bg-white text-slate-700',
-        variant === 'ghost' && 'text-slate-600 hover:bg-slate-100',
+        variant === 'primary' && 'bg-primary text-on-primary shadow-sm hover:bg-primary-hover',
+        variant === 'outline' && 'border border-line bg-surface text-fg',
+        variant === 'ghost' && 'text-muted hover:bg-surface2',
         variant === 'danger' && 'bg-rose-500 text-white',
         className,
       )}
@@ -63,8 +63,8 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   return (
     <input
       className={cn(
-        'h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-slate-900',
-        'placeholder:text-slate-400 focus:border-slate-900 focus:outline-none',
+        'h-12 w-full rounded-xl border border-line bg-surface px-3.5 text-fg',
+        'placeholder:text-muted focus:border-primary focus:outline-none',
         className,
       )}
       {...props}
@@ -75,9 +75,9 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium text-fg">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-slate-400">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
     </label>
   )
 }
@@ -85,7 +85,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm', className)}
+      className={cn('rounded-2xl border border-line bg-surface p-4 shadow-sm', className)}
       {...props}
     />
   )
@@ -121,16 +121,16 @@ export function Sheet({
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 animate-fade-in bg-slate-900/40" onClick={onClose} />
-      <div className="animate-sheet-up relative flex max-h-[92vh] flex-col rounded-t-3xl bg-white">
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+      <div className="absolute inset-0 animate-fade-in bg-black/40" onClick={onClose} />
+      <div className="animate-sheet-up relative flex max-h-[92vh] flex-col rounded-t-3xl bg-surface">
+        <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">
+          <h2 className="text-lg font-semibold text-fg">{title}</h2>
+          <button onClick={onClose} className="rounded-full p-1.5 text-muted hover:bg-surface2">
             <X size={20} />
           </button>
         </div>
         <div className="no-scrollbar flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="pb-safe shrink-0 border-t border-slate-100 px-5 pt-3">{footer}</div>}
+        {footer && <div className="pb-safe shrink-0 border-t border-line px-5 pt-3">{footer}</div>}
       </div>
     </div>
   )
@@ -146,11 +146,11 @@ export function Chip({
       type="button"
       className={cn(
         'rounded-full px-3.5 py-2 text-sm font-medium transition active:scale-95',
-        active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600',
-        className,
-      )}
-      {...props}
-    />
+      active ? 'bg-primary text-on-primary' : 'bg-surface2 text-muted',
+      className,
+    )}
+    {...props}
+  />
   )
 }
 
@@ -158,8 +158,8 @@ export function Empty({ emoji, title, hint }: { emoji: string; title: string; hi
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
       <div className="mb-3 text-5xl">{emoji}</div>
-      <p className="font-medium text-slate-700">{title}</p>
-      {hint && <p className="mt-1 text-sm text-slate-400">{hint}</p>}
+      <p className="font-medium text-fg">{title}</p>
+      {hint && <p className="mt-1 text-sm text-muted">{hint}</p>}
     </div>
   )
 }
@@ -167,8 +167,8 @@ export function Empty({ emoji, title, hint }: { emoji: string; title: string; hi
 export function Spinner({ label }: { label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16">
-      <div className="size-7 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
-      {label && <p className="text-sm text-slate-400">{label}</p>}
+      <div className="size-7 animate-spin rounded-full border-2 border-surface2 border-t-primary" />
+      {label && <p className="text-sm text-muted">{label}</p>}
     </div>
   )
 }

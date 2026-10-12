@@ -14,6 +14,8 @@ import type {
   RetroCardResult,
   SigninResult,
   SigninSummary,
+  Skin,
+  SkinForFamily,
   Task,
 } from '@/types/db'
 
@@ -519,6 +521,52 @@ export const deleteBadge = (id: string, parentToken?: string | null) =>
 
 export const listFamilyBadges = (parentToken?: string | null) =>
   rpc<FamilyBadge[]>('list_family_badges', { p_parent_token: parentToken ?? null })
+
+// ---------------------------------------------------------------------------
+// 皮肤（019）
+// ---------------------------------------------------------------------------
+/** 孩子/家长都能看：带 owned / current 标记 + 每个皮肤的生效价 */
+export const listSkins = (memberId?: string | null) =>
+  rpc<Skin[]>('list_skins', { p_member_id: memberId ?? null })
+
+/** 家长定价用：带基础价 + 家庭生效价 */
+export const listSkinsForFamily = () => rpc<SkinForFamily[]>('list_skins_for_family', {})
+
+/** 兑换皮肤（扣积分 + 记拥有）。默认皮肤后端会拒 */
+export const redeemSkin = (skinId: string) =>
+  rpc<{ skin_id: string; points_spent: number; balance: number; owned: boolean; message: string }>(
+    'redeem_skin',
+    { p_skin_id: skinId },
+  )
+
+/** 切换到已拥有（或默认）皮肤 */
+export const setMemberSkin = (skinId: string) =>
+  rpc<{ skin_id: string; current: boolean }>('set_member_skin', { p_skin_id: skinId })
+
+/** 试用皮肤 1 天（023）。付费且未拥有才能试用，一人一皮肤限一次 */
+export const startSkinTrial = (skinId: string) =>
+  rpc<{
+    skin_id: string
+    ends_at: string
+    hours_left: number
+    price: number
+    message: string
+  }>('start_skin_trial', { p_skin_id: skinId })
+
+/** 提前结束试用，回到原来选中的皮肤（023） */
+export const endSkinTrial = () => rpc<{ trial_end: boolean }>('end_skin_trial', {})
+
+/** 家长覆盖某个皮肤在本家庭的价格。parentToken 默认 null（后端只看 role='parent'） */
+export const setSkinPrice = (
+  parentToken: string | null,
+  skinId: string,
+  pricePoints: number,
+) =>
+  rpc<{ skin_id: string; price: number }>('set_skin_price', {
+    p_parent_token: parentToken ?? null,
+    p_skin_id: skinId,
+    p_price_points: pricePoints,
+  })
 
 // ---------------------------------------------------------------------------
 // 家长调节：现金兑换比率 / 勋章奖励分

@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+﻿import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button, Empty, Field, Input, Sheet, Spinner } from '@/components/ui'
 import { useDeleteBadge, useFamilyBadges, useSetBadgeBonus, useUpsertBadge } from '@/hooks/useApp'
@@ -112,21 +112,21 @@ export function BadgeManageSheet({ open, onClose }: { open: boolean; onClose: ()
               <div
                 key={b.id}
                 className={cn(
-                  'flex items-center gap-3 rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1',
+                  'flex items-center gap-3 rounded-2xl bg-surface px-3.5 py-3 shadow-sm ring-1',
                   tierRing(b.tier),
                 )}
               >
                 <span className="shrink-0 text-2xl">{b.emoji}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-900">
+                  <p className="truncate font-medium text-fg">
                     {b.name}
                     {tierLabel(b.tier) && (
-                      <span className="ml-1.5 text-xs font-normal text-slate-400">
+                      <span className="ml-1.5 text-xs font-normal text-muted">
                         {tierLabel(b.tier)}
                       </span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-slate-400">{ruleSummary(b.rule)}</p>
+                  <p className="truncate text-xs text-muted">{ruleSummary(b.rule)}</p>
                   <p className="truncate text-[11px] text-emerald-600">
                     奖励 +{toNum(b.points_bonus)} 分
                     {b.is_system && toNum(b.points_bonus) !== toNum(b.base_bonus) && ' · 已覆盖'}
@@ -134,7 +134,7 @@ export function BadgeManageSheet({ open, onClose }: { open: boolean; onClose: ()
                 </div>
                 <button
                   onClick={() => setForm(toForm(b))}
-                  className="shrink-0 rounded-lg p-2 text-slate-400 active:bg-slate-100"
+                  className="shrink-0 rounded-lg p-2 text-muted active:bg-surface2"
                   aria-label="编辑"
                 >
                   <Pencil size={16} />
@@ -225,10 +225,10 @@ function BadgeForm({
     >
       <div className="space-y-4">
         {/* 预览：家长边填边看孩子会看到什么 */}
-        <div className="flex flex-col items-center rounded-2xl bg-slate-50 py-4">
+        <div className="flex flex-col items-center rounded-2xl bg-app py-4">
           <span className="text-5xl">{form.emoji || '🏅'}</span>
-          <p className="mt-1.5 font-semibold text-slate-900">{form.name.trim() || '未命名勋章'}</p>
-          <p className="text-xs text-slate-400">
+          <p className="mt-1.5 font-semibold text-fg">{form.name.trim() || '未命名勋章'}</p>
+          <p className="text-xs text-muted">
             {tierLabel(form.tier)} ·{' '}
             {ruleSummary(buildRule(form.kind, threshold, form.dimension))}
           </p>
@@ -267,7 +267,7 @@ function BadgeForm({
                 onClick={() => set('tier', t.key)}
                 className={cn(
                   'flex flex-col items-center rounded-xl py-2 transition active:scale-95',
-                  form.tier === t.key ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600',
+                  form.tier === t.key ? 'bg-primary text-white' : 'bg-surface2 text-muted',
                 )}
               >
                 <span className="text-lg leading-none">{t.emoji}</span>
@@ -289,7 +289,7 @@ function BadgeForm({
           <select
             value={form.kind}
             onChange={(e) => set('kind', e.target.value as RuleKind)}
-            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-slate-900 focus:border-slate-900 focus:outline-none"
+            className="h-12 w-full rounded-xl border border-line bg-surface px-3 text-fg focus:border-primary focus:outline-none"
           >
             {RULE_KINDS.map((k) => (
               <option key={k.key} value={k.key}>
@@ -310,8 +310,8 @@ function BadgeForm({
                   className={cn(
                     'rounded-xl py-2.5 text-sm font-medium transition active:scale-95',
                     form.dimension === d.key
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600',
+                      ? 'bg-primary text-white'
+                      : 'bg-surface2 text-muted',
                   )}
                 >
                   {d.label}
@@ -334,7 +334,7 @@ function BadgeForm({
         </div>
 
         {form.isSystem && (
-          <p className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">
+          <p className="rounded-xl bg-app px-3.5 py-2.5 text-sm text-muted">
             系统内置勋章只能调整「奖励积分」，名字 / 规则由系统统一设定，不可改。
           </p>
         )}
@@ -350,7 +350,7 @@ function BadgeForm({
           />
         </Field>
 
-        {!nameOk && <p className="text-xs text-slate-400">名字不能空着。</p>}
+        {!nameOk && <p className="text-xs text-muted">名字不能空着。</p>}
         {ok && (
           <p className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700">已保存</p>
         )}

@@ -1,4 +1,4 @@
-import { Check, Clock, Star } from 'lucide-react'
+﻿import { Check, Clock, Star } from 'lucide-react'
 import { useState } from 'react'
 import { colorOf } from '@/components/ui'
 import { useTaskActions } from '@/hooks/useApp'
@@ -115,8 +115,8 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        'relative rounded-2xl border bg-white transition',
-        done ? 'border-slate-100 opacity-60' : 'border-slate-200/80 shadow-sm',
+        'relative rounded-2xl border bg-surface transition',
+        done ? 'border-line opacity-60' : 'border-line/80 shadow-sm',
         skipped && 'opacity-45',
         entry.archived && 'border-dashed',
       )}
@@ -138,12 +138,12 @@ export function TaskCard({
           <span
             className={cn(
               'flex size-7 items-center justify-center rounded-full border-2 transition',
-              (done || checkedInFull) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300',
+              (done || checkedInFull) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-line',
               !done && !skipped && editable && 'active:scale-90',
             )}
           >
             {done && <Check size={16} strokeWidth={3} />}
-            {skipped && <Clock size={13} className="text-slate-400" />}
+            {skipped && <Clock size={13} className="text-muted" />}
             {!done && !skipped && checkedInFull && <Check size={16} strokeWidth={3} className="text-white" />}
           </span>
         </button>
@@ -157,8 +157,8 @@ export function TaskCard({
             <span className="text-base">{entry.icon_emoji}</span>
             <span
               className={cn(
-                'truncate font-medium text-slate-900',
-                done && 'text-slate-400 line-through',
+                'truncate font-medium text-fg',
+                done && 'text-muted line-through',
               )}
             >
               {entry.title}
@@ -167,7 +167,7 @@ export function TaskCard({
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             {timeLabel && (
-              <span className="inline-flex items-center gap-0.5 text-slate-400">
+              <span className="inline-flex items-center gap-0.5 text-muted">
                 <Clock size={11} />
                 {timeLabel}
               </span>
@@ -185,8 +185,8 @@ export function TaskCard({
                   ` (${entry.checkin_count}/${entry.checkin_daily_limit})`}
               </span>
             )}
-            {skipped && <span className="text-slate-400">已请假</span>}
-            {entry.archived && <span className="text-slate-400">已停用</span>}
+            {skipped && <span className="text-muted">已请假</span>}
+            {entry.archived && <span className="text-muted">已停用</span>}
           </div>
         </button>
 
@@ -209,18 +209,18 @@ export function TaskCard({
                   aria-label="关闭菜单"
                   onClick={() => setMenuOpen(false)}
                 />
-                <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
                   <button
                     onClick={completeToday}
                     disabled={busy}
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+                    className="block w-full px-3 py-2 text-left text-sm text-fg hover:bg-app active:bg-surface2"
                   >
                     完成当日
                   </button>
                   <button
                     onClick={completeAllDays}
                     disabled={busy}
-                    className="block w-full border-t border-slate-100 px-3 py-2 text-left text-sm text-violet-700 hover:bg-violet-50 active:bg-violet-100"
+                    className="block w-full border-t border-line px-3 py-2 text-left text-sm text-violet-700 hover:bg-violet-50 active:bg-violet-100"
                   >
                     完成全部
                   </button>

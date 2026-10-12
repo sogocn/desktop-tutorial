@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import {
   defaultSchedule,
   RecurrencePicker,
@@ -172,7 +172,7 @@ export function TaskFormSheet({
 
         {/* 图标 + 颜色 */}
         <div>
-          <p className="mb-1.5 text-sm font-medium text-slate-700">图标</p>
+          <p className="mb-1.5 text-sm font-medium text-fg">图标</p>
           <div className="grid grid-cols-6 gap-2">
             {ICONS.map((i) => (
               <button
@@ -181,7 +181,7 @@ export function TaskFormSheet({
                 onClick={() => setIcon(i)}
                 className={cn(
                   'flex aspect-square items-center justify-center rounded-xl text-xl transition active:scale-95',
-                  icon === i ? 'bg-slate-900' : 'bg-slate-100',
+                  icon === i ? 'bg-primary' : 'bg-surface2',
                 )}
               >
                 {i}
@@ -191,7 +191,7 @@ export function TaskFormSheet({
         </div>
 
         <div>
-          <p className="mb-1.5 text-sm font-medium text-slate-700">颜色</p>
+          <p className="mb-1.5 text-sm font-medium text-fg">颜色</p>
           <div className="flex gap-2.5">
             {(Object.keys(TASK_COLORS) as TaskColor[]).map((c) => (
               <button
@@ -211,7 +211,7 @@ export function TaskFormSheet({
         {/* 派给谁：仅家长新建时可多选（编辑不改指派人） */}
         {isParent && !editing && (
           <div>
-            <p className="mb-1.5 text-sm font-medium text-slate-700">派给谁（可多选）</p>
+            <p className="mb-1.5 text-sm font-medium text-fg">派给谁（可多选）</p>
             <div className="flex flex-wrap gap-2">
               {members.map((m) => (
                 <Chip
@@ -232,8 +232,8 @@ export function TaskFormSheet({
         )}
 
         {/* 排期 */}
-        <div className="border-t border-slate-100 pt-4">
-          <p className="mb-2.5 text-sm font-semibold text-slate-900">什么时候做</p>
+        <div className="border-t border-line pt-4">
+          <p className="mb-2.5 text-sm font-semibold text-fg">什么时候做</p>
           <RecurrencePicker value={sched} onChange={setSched} />
         </div>
 
@@ -245,7 +245,7 @@ export function TaskFormSheet({
                 type="time"
                 value={windowStart}
                 onChange={(e) => setWindowStart(e.target.value)}
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 focus:border-slate-900 focus:outline-none"
+                className="h-12 w-full rounded-xl border border-line bg-surface px-3 focus:border-primary focus:outline-none"
               />
             </Field>
             <Field label="结束时间">
@@ -253,7 +253,7 @@ export function TaskFormSheet({
                 type="time"
                 value={windowEnd}
                 onChange={(e) => setWindowEnd(e.target.value)}
-                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 focus:border-slate-900 focus:outline-none"
+                className="h-12 w-full rounded-xl border border-line bg-surface px-3 focus:border-primary focus:outline-none"
               />
             </Field>
           </div>
@@ -264,14 +264,14 @@ export function TaskFormSheet({
               type="time"
               value={windowEnd}
               onChange={(e) => setWindowEnd(e.target.value)}
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 focus:border-slate-900 focus:outline-none"
+              className="h-12 w-full rounded-xl border border-line bg-surface px-3 focus:border-primary focus:outline-none"
             />
           </Field>
         )}
 
         {/* 奖励（手动输入积分） */}
-        <div className="space-y-4 border-t border-slate-100 pt-4">
-          <p className="text-sm font-semibold text-slate-900">奖励</p>
+        <div className="space-y-4 border-t border-line pt-4">
+          <p className="text-sm font-semibold text-fg">奖励</p>
 
           <PointStepper
             label="完成奖励"
@@ -343,14 +343,14 @@ function PointStepper({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-slate-700">{label}</p>
-        {hint && <p className="text-xs text-slate-400">{hint}</p>}
+        <p className="text-sm font-medium text-fg">{label}</p>
+        {hint && <p className="text-xs text-muted">{hint}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           onClick={() => onChange(clamp(value - step))}
-          className="size-9 rounded-lg bg-slate-100 text-lg font-medium text-slate-600 active:scale-90"
+          className="size-9 rounded-lg bg-surface2 text-lg font-medium text-muted active:scale-90"
         >
           −
         </button>
@@ -366,12 +366,12 @@ function PointStepper({
             if (!Number.isNaN(n)) onChange(clamp(n))
           }}
           onBlur={() => setText(String(clamp(parseInt(text, 10))))}
-          className="h-9 w-14 rounded-lg border border-slate-200 bg-white text-center text-base font-semibold tabular-nums text-slate-900 focus:border-slate-900 focus:outline-none"
+          className="h-9 w-14 rounded-lg border border-line bg-surface text-center text-base font-semibold tabular-nums text-fg focus:border-primary focus:outline-none"
         />
         <button
           type="button"
           onClick={() => onChange(clamp(value + step))}
-          className="size-9 rounded-lg bg-slate-100 text-lg font-medium text-slate-600 active:scale-90"
+          className="size-9 rounded-lg bg-surface2 text-lg font-medium text-muted active:scale-90"
         >
           +
         </button>

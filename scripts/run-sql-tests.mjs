@@ -45,7 +45,7 @@ console.log('\n› 运行断言')
 notices.length = 0
 // 每个文件自带 begin/rollback，互不污染。新增断言文件记得挂到这里。
 const suites = ['db/tests/test_expand.sql', 'db/tests/test_signin.sql', 'db/tests/test_parent_multiusers.sql', 'db/tests/test_checkin_012.sql', 'db/tests/test_shop_badges_013.sql', 'db/tests/test_no_pin_ops_014.sql', 'db/tests/test_skip_approval_015.sql', 'db/tests/test_challenge_016.sql', 'db/tests/test_challenge_category_017.sql',
- 'db/tests/test_challenge_signin_018.sql']
+ 'db/tests/test_challenge_signin_018.sql', 'db/tests/test_skins_019.sql', 'db/tests/test_no_daily_cap_020.sql', 'db/tests/test_skin_photos_021.sql', 'db/tests/test_skin_trial_023.sql']
 for (const f of suites) {
   console.log(`  › ${f}`)
   await run(f, read(f))

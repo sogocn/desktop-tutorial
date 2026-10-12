@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+﻿import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Copy, Check, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import * as apiFns from '@/api'
@@ -105,8 +105,8 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
   return (
     <div className="flex flex-1 flex-col justify-center py-10">
       <div className="mb-2 text-6xl">🏡</div>
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">家庭任务板</h1>
-      <p className="mt-2 leading-relaxed text-slate-500">
+      <h1 className="text-3xl font-bold tracking-tight text-fg">家庭任务板</h1>
+      <p className="mt-2 leading-relaxed text-muted">
         把「今天该做什么」变成一件看得见、点得动、有回响的事。
       </p>
 
@@ -124,8 +124,8 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
 
       {knownUsers.length > 0 && (
         <section className="mt-8">
-          <h2 className="px-1 text-sm font-semibold text-slate-900">本机已登录账号</h2>
-          <p className="mb-2 px-1 text-xs leading-relaxed text-slate-400">
+          <h2 className="px-1 text-sm font-semibold text-fg">本机已登录账号</h2>
+          <p className="mb-2 px-1 text-xs leading-relaxed text-muted">
             这些是本机登录过的账号，点一下即可切换，无需重新输入用户名和密码。
           </p>
           <div className="space-y-2">
@@ -140,13 +140,13 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
               >
                 <span className="text-2xl">{u.avatarEmoji ?? '🙂'}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-900">
+                  <p className="truncate font-medium text-fg">
                     {u.nickname || '未命名'}
                     {busyId === u.userId && (
-                      <span className="ml-1.5 text-xs text-slate-400">切换中…</span>
+                      <span className="ml-1.5 text-xs text-muted">切换中…</span>
                     )}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted">
                     {u.familyName ? `${u.familyName} · ` : ''}
                     {u.role === 'parent' ? '家长' : '孩子'}
                   </p>
@@ -163,7 +163,7 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
                       return
                     removeKnownUser(u.userId)
                   }}
-                  className="shrink-0 rounded-full p-2 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
+                  className="shrink-0 rounded-full p-2 text-muted transition hover:bg-rose-50 hover:text-rose-500"
                   aria-label={`删除 ${u.nickname || '未命名'}`}
                 >
                   <Trash2 size={18} />
@@ -176,7 +176,7 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
 
       {err && <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-600">{err}</p>}
 
-      <p className="mt-8 text-center text-xs leading-relaxed text-slate-400">
+      <p className="mt-8 text-center text-xs leading-relaxed text-muted">
         数据保存在服务器，用用户名 + PIN 可在任意设备登录同一份家庭数据。
       </p>
     </div>
@@ -186,10 +186,10 @@ function Welcome({ onPick }: { onPick: (s: Step) => void }) {
 function Header({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="flex items-center gap-3 py-4">
-      <button onClick={onBack} className="-ml-1 rounded-full p-1.5 text-slate-500 hover:bg-slate-100">
+      <button onClick={onBack} className="-ml-1 rounded-full p-1.5 text-muted hover:bg-surface2">
         <ArrowLeft size={22} />
       </button>
-      <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+      <h1 className="text-xl font-semibold text-fg">{title}</h1>
     </div>
   )
 }
@@ -204,7 +204,7 @@ function AvatarPicker({ value, onChange }: { value: string; onChange: (v: string
           onClick={() => onChange(a)}
           className={cn(
             'flex aspect-square items-center justify-center rounded-xl text-2xl transition',
-            value === a ? 'bg-slate-900 ring-2 ring-slate-900' : 'bg-slate-100 active:scale-95',
+            value === a ? 'bg-primary ring-2 ring-slate-900' : 'bg-surface2 active:scale-95',
           )}
         >
           {a}
@@ -515,9 +515,9 @@ function CodeRow({ label, code, hint }: { label: string; code: string; hint: str
   return (
     <Card className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-700">{label}</p>
-        <p className="font-mono text-2xl font-bold tracking-[0.2em] text-slate-900">{code}</p>
-        <p className="mt-0.5 text-xs text-slate-400">{hint}</p>
+        <p className="text-sm font-medium text-fg">{label}</p>
+        <p className="font-mono text-2xl font-bold tracking-[0.2em] text-fg">{code}</p>
+        <p className="mt-0.5 text-xs text-muted">{hint}</p>
       </div>
       <Button
         variant="outline"
@@ -545,8 +545,8 @@ function ShowCodes({ codes }: { codes: { child: string; parent: string } }) {
   return (
     <div className="flex flex-1 flex-col justify-center py-10">
       <div className="animate-pop-in mb-2 text-6xl">🎉</div>
-      <h1 className="text-2xl font-bold text-slate-900">家庭建好了</h1>
-      <p className="mt-1.5 text-slate-500">把邀请码发给家人，他们在自己手机上输入就能加入。</p>
+      <h1 className="text-2xl font-bold text-fg">家庭建好了</h1>
+      <p className="mt-1.5 text-muted">把邀请码发给家人，他们在自己手机上输入就能加入。</p>
 
       <div className="mt-6 space-y-3">
         <CodeRow label="孩子邀请码" code={codes.child} hint="用这个码加入的人是孩子身份" />

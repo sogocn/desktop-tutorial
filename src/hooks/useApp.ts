@@ -19,6 +19,10 @@ export const qk = {
   familyBadges: ['familyBadges'] as const,
   /** 满星挑战（016）：进度 + 可开规格 + 商城补满星卡 */
   challenge: ['challenge'] as const,
+  /** 皮肤商店（019）：列表带 owned/current/price，按 viewing 成员查 */
+  skins: (m: string | null) => ['skins', m] as const,
+  /** 家长皮肤定价（019）：基础价 + 家庭生效价 */
+  skinsFamily: ['skinsFamily'] as const,
 }
 
 /**
@@ -241,6 +245,105 @@ export function useDeleteTask() {
       qc.invalidateQueries({ queryKey: ['calendar'] })
       qc.invalidateQueries({ queryKey: ['tasks'] })
       qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/** 皮肤商店（019）：孩子/家长都能看，带 owned/current/price。memberId 省略=自己 */
+export function useSkins(memberId: string | null) {
+  return useQuery({
+    queryKey: qk.skins(memberId),
+    queryFn: () => api.listSkins(memberId),
+  })
+}
+
+/**
+ * 当前正在使用的那张皮肤（含 theme.photo），日历页头图用。
+ * 列表还没回来时返回 null，页面按需不渲染头图即可，不会闪。
+ */
+export function useCurrentSkin() {
+  const me = useMe()
+  const { data: skins } = useSkins(me?.id ?? null)
+  const list = skins ?? []
+  return list.find((s) => s.current) ?? null
+}
+
+/** 家长皮肤定价列表（019） */
+export function useSkinsForFamily() {
+  return useQuery({
+    queryKey: qk.skinsFamily,
+    queryFn: api.listSkinsForFamily,
+  })
+}
+
+/** 兑换皮肤（019）。mutateAsync 收 skinId；成功后刷 skin 列表 + 余额 */
+export function useRedeemSkin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (skinId: string) => api.redeemSkin(skinId),
+    onSuccess: () => {
+      // 必须按前缀失效：列表的键是 ['skins', <memberId>]，而成员 id 是真实 uuid，
+      // 失效 ['skins', null] 根本打不到它 —— 这正是兑换后列表不刷新的原因。
+      qc.invalidateQueries({ queryKey: ['skins'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/** 切换皮肤（019）。mutateAsync 收 skinId；成功后刷 skin 列表 + bootstrap（selected_skin_id） */
+export function useSetMemberSkin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (skinId: string) => api.setMemberSkin(skinId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['skins'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/**
+ * 试用皮肤 1 天（023）。mutateAsync 收 skinId。
+ * 成功后列表里的 current 会指到试用中的皮肤，ThemeApplier 自动套用，
+ * 到期后同一套逻辑自然回落到原来选中的皮肤。
+ */
+export function useStartSkinTrial() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (skinId: string) => api.startSkinTrial(skinId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['skins'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/** 提前结束试用（023），回到原来选中的皮肤 */
+export function useEndSkinTrial() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.endSkinTrial(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['skins'] })
+      qc.invalidateQueries({ queryKey: qk.bootstrap })
+    },
+  })
+}
+
+/**
+ * 家长皮肤定价（019）。mutateAsync 收 { skinId, pricePoints }
+ * token 固定传 null：014 起 _parent_guard 没 token 时只看 role='parent' 就放行，
+ * 这里若传会话里的旧 token 反而会走 require_parent 严格校验，一旦过期就被拒。
+ */
+export function useSetSkinPrice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { skinId: string; pricePoints: number }) =>
+      api.setSkinPrice(null, v.skinId, v.pricePoints),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.skinsFamily })
+      // 家庭价变了，孩子侧 skin 列表的 price 也要刷新
+      qc.invalidateQueries({ queryKey: ['skins'] })
     },
   })
 }

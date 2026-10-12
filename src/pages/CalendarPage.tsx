@@ -1,10 +1,10 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+﻿import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { TaskCard } from '@/components/TaskCard'
 import { TaskDetailSheet } from '@/components/TaskDetailSheet'
 import { TaskFormSheet } from '@/components/TaskFormSheet'
 import { colorOf, Empty, Spinner } from '@/components/ui'
-import { useBootstrap, useMe, useMonthCalendar, useViewingMember } from '@/hooks/useApp'
+import { useBootstrap, useCurrentSkin, useMe, useMonthCalendar, useViewingMember } from '@/hooks/useApp'
 import { cn } from '@/lib/cn'
 import { addMonths, formatMd, formatMonth, monthOf, WEEKDAY_LABELS, type Ymd } from '@/lib/date'
 import { useSession } from '@/store/session'
@@ -26,6 +26,8 @@ export default function CalendarPage() {
 
   const { grid, byDate, isLoading } = useMonthCalendar(cur, viewing?.id ?? null)
   const curMonth = monthOf(cur)
+  // 当前皮肤，用来取专属头图（没配 photo 就不渲染）
+  const skin = useCurrentSkin()
 
   const selList = useMemo(() => byDate.get(sel) ?? [], [byDate, sel])
   const children = boot?.members?.filter((m) => m.role === 'child') ?? []
@@ -35,13 +37,13 @@ export default function CalendarPage() {
 
   return (
     <div className="mx-auto w-full max-w-md">
-      <div className="pt-safe sticky top-0 z-20 bg-slate-50/85 px-4 pb-2 backdrop-blur-lg">
+      <div className="pt-safe sticky top-0 z-20 bg-app/85 px-4 pb-2 backdrop-blur-lg">
         <div className="flex items-center justify-between pt-2">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{formatMonth(cur)}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-fg">{formatMonth(cur)}</h1>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setAnchor(addMonths(cur, -1))}
-              className="rounded-full p-2 text-slate-500 active:bg-slate-200"
+              className="rounded-full p-2 text-muted active:bg-surface2"
             >
               <ChevronLeft size={20} />
             </button>
@@ -51,14 +53,14 @@ export default function CalendarPage() {
                   setAnchor(null)
                   setSelected(null)
                 }}
-                className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white"
+                className="rounded-full bg-primary px-2.5 py-1 text-xs font-medium text-white"
               >
                 本月
               </button>
             )}
             <button
               onClick={() => setAnchor(addMonths(cur, 1))}
-              className="rounded-full p-2 text-slate-500 active:bg-slate-200"
+              className="rounded-full p-2 text-muted active:bg-surface2"
             >
               <ChevronRight size={20} />
             </button>
@@ -74,7 +76,7 @@ export default function CalendarPage() {
                 onClick={() => setViewingMember(c.id)}
                 className={cn(
                   'flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-medium transition',
-                  viewing?.id === c.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600',
+                  viewing?.id === c.id ? 'bg-primary text-white' : 'bg-surface text-muted',
                 )}
               >
                 <span className="text-base">{c.avatar_emoji}</span>
@@ -85,7 +87,7 @@ export default function CalendarPage() {
               onClick={() => setViewingMember(me.id)}
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-medium transition',
-                viewing?.id === me.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600',
+                viewing?.id === me.id ? 'bg-primary text-white' : 'bg-surface text-muted',
               )}
             >
               <span className="text-base">{me.avatar_emoji}</span>
@@ -96,6 +98,17 @@ export default function CalendarPage() {
       </div>
 
       <div className="px-3 pb-28">
+        {/* 皮肤头图：3:1 宽幅横幅，用 <img> 按原比例整张渲染。
+            不用 background-size:cover —— 那会把横幅按宽度放大后垂直居中裁切，
+            右下角的主体（角色）会被切掉。 */}
+        {skin?.theme.banner && (
+          <img
+            src={skin.theme.banner}
+            alt=""
+            className="mb-2.5 block w-full rounded-2xl ring-1 ring-line"
+          />
+        )}
+
         {/* 星期表头 */}
         <div className="grid grid-cols-7 pb-1">
           {WEEKDAY_LABELS.map((w, i) => (
@@ -103,7 +116,7 @@ export default function CalendarPage() {
               key={w}
               className={cn(
                 'py-1.5 text-center text-xs font-medium',
-                i >= 5 ? 'text-rose-400' : 'text-slate-400',
+                i >= 5 ? 'text-rose-400' : 'text-muted',
               )}
             >
               {w}
@@ -129,12 +142,12 @@ export default function CalendarPage() {
         {/* 选中日详情 */}
         <div className="mt-4">
           <div className="mb-2 flex items-baseline justify-between px-1">
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="font-semibold text-fg">
               {formatMd(sel)}
-              {sel === today && <span className="ml-1.5 text-sm text-slate-400">今天</span>}
+              {sel === today && <span className="ml-1.5 text-sm text-muted">今天</span>}
             </h2>
             {selList.length > 0 && (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 {selList.filter((e) => e.status === 'completed').length}/{selList.length} 完成
               </span>
             )}
@@ -199,13 +212,13 @@ function DayCell({
       className={cn(
         'flex h-14 flex-col items-center justify-start gap-1 rounded-xl pt-1.5 transition',
         !inMonth && 'opacity-30',
-        selected && 'bg-slate-900/5 ring-2 ring-slate-900',
+        selected && 'bg-black/5 ring-2 ring-slate-900',
       )}
     >
       <span
         className={cn(
           'flex size-6 items-center justify-center rounded-full text-[13px] font-medium',
-          isToday ? 'bg-slate-900 font-bold text-white' : 'text-slate-700',
+          isToday ? 'bg-primary font-bold text-white' : 'text-fg',
           allDone && !isToday && 'text-emerald-600',
         )}
       >
@@ -224,11 +237,11 @@ function DayCell({
                 className={cn(
                   'size-1.5 rounded-full',
                   e.status === 'completed' ? 'bg-emerald-400' : colorOf(e.color).dot,
-                  e.status === 'skipped' && 'bg-slate-200',
+                  e.status === 'skipped' && 'bg-surface2',
                 )}
               />
             ))}
-            {total > 4 && <span className="text-[9px] leading-none text-slate-400">+</span>}
+            {total > 4 && <span className="text-[9px] leading-none text-muted">+</span>}
           </>
         )}
       </span>
