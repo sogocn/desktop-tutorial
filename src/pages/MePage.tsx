@@ -102,7 +102,7 @@ export default function MePage() {
               <RowButton
                 icon={<ShieldCheck size={18} />}
                 label="审批中心"
-                hint={pendingCount > 0 ? `${pendingCount} 笔待处理` : '查看孩子的兑换 / 请假申请'}
+                hint={pendingCount > 0 ? `${pendingCount} 笔待处理` : '近期兑换可撤销 · 请假待批'}
                 onClick={() => setApprovals(true)}
               />
               <RowButton
@@ -424,14 +424,21 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
   const { data: skipData } = useSkipRequests()
   const [err, setErr] = useState('')
 
-  const pending = (data ?? []).filter((r) => r.status === 'pending')
+  // 026 起兑换即时生效，不再有待批的兑换。这一块改作「最近兑换」：
+  // 事前审批没了，家长必须留有事后撤销的兜底，否则孩子误兑 / 多兑（尤其是补签卡
+  // 这类立刻进库存的东西）就没有回头路了。只列近 7 天，避免历史记录越滚越长。
+  const recent = (data ?? []).filter(
+    (r) =>
+      (r.status === 'approved' || r.status === 'delivered') &&
+      Date.now() - new Date(r.requested_at).getTime() < 7 * 86_400_000,
+  )
   const skipPending = (skipData ?? []).filter((s) => s.status === 'pending')
 
   // 014 起家长角色本身就是闸门，不再要求先输 PIN 拿 token
-  async function decide(id: string, decision: 'approved' | 'rejected') {
+  async function cancel(id: string) {
     setErr('')
     try {
-      await api.decideRedemption(id, decision, null)
+      await api.decideRedemption(id, 'cancelled', null)
       await qc.invalidateQueries({ queryKey: ['redemptions'] })
       await qc.invalidateQueries({ queryKey: qk.bootstrap })
     } catch (e) {
@@ -452,7 +459,7 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
     }
   }
 
-  const hasAny = pending.length > 0 || skipPending.length > 0
+  const hasAny = recent.length > 0 || skipPending.length > 0
 
   return (
     <Sheet open={open} onClose={onClose} title="审批中心">
@@ -461,10 +468,10 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
           <Empty emoji="✅" title="没有待处理的申请" />
         ) : (
           <>
-            {pending.length > 0 && (
+            {recent.length > 0 && (
               <div className="space-y-2.5">
-                <p className="text-xs font-medium text-muted">兑换申请</p>
-                {pending.map((r) => (
+                <p className="text-xs font-medium text-muted">最近兑换（已生效，可撤销）</p>
+                {recent.map((r) => (
                   <Card key={r.id} className="space-y-3">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{r.snap_emoji}</span>
@@ -483,23 +490,9 @@ function ApprovalsSheet({ open, onClose }: { open: boolean; onClose: () => void 
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => decide(r.id, 'approved')}
-                      >
-                        同意
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => decide(r.id, 'rejected')}
-                      >
-                        驳回并退分
-                      </Button>
-                    </div>
+                    <Button size="sm" variant="outline" onClick={() => cancel(r.id)}>
+                      撤销并退分
+                    </Button>
                   </Card>
                 ))}
               </div>

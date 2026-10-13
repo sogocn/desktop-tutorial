@@ -152,7 +152,6 @@ function ShopList({ balance, onPick }: { balance: number; onPick: (i: RewardItem
                   ? `${item.rate_points} 分 = 1 ${item.unit_label}`
                   : `${item.price_points} 分`}
                 {item.stock !== null && ` · 剩 ${item.stock}`}
-                {item.requires_approval && ' · 需家长确认'}
               </p>
             </div>
             <Button size="sm" disabled={!affordable} onClick={() => onPick(item)}>
@@ -265,11 +264,6 @@ function RedeemSheet({
           </span>
         </div>
 
-        {item.requires_approval && (
-          <p className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
-            这个需要家长确认。积分会先扣掉，家长不同意的话会自动退回。
-          </p>
-        )}
         {msg && (
           <p className="rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-700">{msg}</p>
         )}

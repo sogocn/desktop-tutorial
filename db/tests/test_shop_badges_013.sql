@@ -279,6 +279,12 @@ begin
    where family_id = v_fid and card_kind = 'retro_fullstar';
   v_bal := (select points_balance from app.members where id = v_kid);
 
+  -- 026 起播种商品一律免审批（兑换即时生效、直接 approved，不再 pending）。
+  -- 本段要覆盖的仍是「家长驳回 → 卡和分一起退」这条路径，所以显式把该商品设成需审批。
+  -- 与 025 的 fullstar_points = 0 同一个套路：新规则改了既有测试的默认数据，
+  -- 就在本测试里把前提显式化，而不是去改断言。
+  update app.reward_items set requires_approval = true where id = v_item;
+
   r := app.redeem(v_item, 1);
   v_rid := (r->>'redemption_id')::uuid;
   assert (select qty from app.member_cards
