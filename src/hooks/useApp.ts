@@ -420,16 +420,18 @@ export function useStartChallenge() {
 }
 
 /**
- * 失败预警后的补救：买一张满星卡 + 立刻补在漏掉那天。
+ * 失败预警后的补救：买一张"该类对应的补卡" + 立刻补在漏掉那天。
  * 两步都是既有能力（013 商城 redeem / 010 use_retro_card），这里只是串起来 ——
- * 补完那天满星数回升，挑战进度在下次读取时自动恢复可行，不需要"复活"接口。
+ * 补完那天对应维度（满星/签到/活跃）回升，挑战进度在下次读取时自动恢复可行。
+ * 补卡类型按挑战类走：满星→retro_fullstar、签到→retro_signin、活跃→retro_active
+ * （之前这里写死 retro_fullstar，签到/活跃类补救会补错维度，027 起按 kind 传入）。
  */
 export function useRescueChallenge() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (v: { itemId: string; day: Ymd }) => {
+    mutationFn: async (v: { itemId: string; day: Ymd; kind: RetroCardKind }) => {
       await api.redeem(v.itemId, 1)
-      await api.applyRetroCard('retro_fullstar', v.day)
+      await api.applyRetroCard(v.kind, v.day)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.challenge })

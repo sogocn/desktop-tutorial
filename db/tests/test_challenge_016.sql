@@ -2,7 +2,7 @@
 -- test_challenge_016.sql —— 016 满星挑战
 -- =============================================================================
 -- 覆盖：
---   S0 家长视角：无挑战 → current=null，specs 两条
+--   S0 家长视角：无挑战 → current=null，specs 六条（满星21/45 + 签到21/45 + 活跃21/45）
 --   S1 孩子开 21 天挑战 → active，扣 20 分，流水落 challenge/seq=0
 --   S2 进行中再开（任意类型）→ CHALLENGE_ACTIVE
 --   S3 余额不足（家长 0 分）→ NOT_ENOUGH_POINTS
@@ -59,8 +59,8 @@ begin
   -- 必须用 jsonb_typeof 判类型（或 ->> 转文本再判）
   assert jsonb_typeof(v_state->'current') = 'null',
     format('S0 家长应无挑战，实际 current=%s', v_state->'current');
-  assert jsonb_array_length(v_state->'specs') = 4, 'S0 specs 应有四条（满星21/45 + 签到21/45）';
-  raise notice '✓ S0 家长视角 current=null，specs=4';
+  assert jsonb_array_length(v_state->'specs') = 6, 'S0 specs 应有六条（满星21/45 + 签到21/45 + 活跃21/45）';
+  raise notice '✓ S0 家长视角 current=null，specs=6';
 
   -- S1 孩子开 21 天挑战 → 扣 20 分
   perform set_config('request.jwt.claims',

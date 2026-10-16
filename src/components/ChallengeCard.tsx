@@ -9,10 +9,19 @@ import { formatMd } from '@/lib/date'
 import type { ChallengeCategory, ChallengeCurrent, ChallengeSpec } from '@/api'
 
 /**
- * 不同类挑战统计的"达标维度"用词不同：满星类看「满星」、签到类看「签到」。
- * 后端判定维度已按类切换（018），前端展示文案也要跟着切，不能写死"满星"。
+ * 不同类挑战统计的"达标维度"用词不同：满星类看「满星」、签到类看「签到」、活跃类看「活跃」。
+ * 后端判定维度已按类切换（018/027），前端展示文案也要跟着切，不能写死"满星"。
  */
-const METRIC_WORD: Record<ChallengeCategory, string> = { fullstar: '满星', signin: '签到' }
+const METRIC_WORD: Record<ChallengeCategory, string> = { fullstar: '满星', signin: '签到', active: '活跃' }
+
+/**
+ * 每类挑战"怎么做才算达标"的提示文案，跟着维度走（027 新增活跃类）。
+ */
+const GOAL_HINT: Record<ChallengeCategory, string> = {
+  fullstar: '每天把任务全部做完就是满星',
+  signin: '每天记得签到就是签到',
+  active: '每天至少完成或打卡一次任务就是活跃',
+}
 
 /**
  * 挑战任务（016 满星 / 017 按类互斥 / 018 连续签到）。
@@ -70,7 +79,11 @@ export function ChallengeCard() {
     if (!c.retro_card_item || !c.latest_missed_day) return
     setErr('')
     try {
-      await rescue.mutateAsync({ itemId: c.retro_card_item.id, day: c.latest_missed_day })
+      await rescue.mutateAsync({
+        itemId: c.retro_card_item.id,
+        day: c.latest_missed_day,
+        kind: c.retro_card_item.kind,
+      })
       buzz()
       celebrate('small')
     } catch (e) {
@@ -146,7 +159,7 @@ export function ChallengeCard() {
                   {c.category_label}挑战 · 进行中（第 {c.elapsed}/{c.window_days} 天）
                 </p>
                 <p className="mt-1 text-xs text-muted">
-                  {formatMd(c.started_on)} — {formatMd(c.ends_on)} · 每天把任务全部做完就是满星
+                  {formatMd(c.started_on)} — {formatMd(c.ends_on)} · {GOAL_HINT[c.category]}
                 </p>
                 <div className="mt-3 flex items-end gap-6">
                   <div>

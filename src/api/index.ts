@@ -411,9 +411,9 @@ export const applyRetroCard = (kind: RetroCardKind, date: Ymd, memberId?: string
 // 017 起同一「类」（连续满星 / 连续签到）同一时间只能有一条进行中，但不同类可并行、
 // 结束后可以再开 —— 互斥判定由后端 unique index + start_challenge 双保险负责。
 // 018 起补救卡按类提供（current.retro_card_item）：满星类→补满星卡，签到类→补签卡。
-export type ChallengeKind = 'fullstar_21' | 'fullstar_45' | 'signin_21' | 'signin_45'
+export type ChallengeKind = 'fullstar_21' | 'fullstar_45' | 'signin_21' | 'signin_45' | 'active_21' | 'active_45'
 /** 挑战的「类」：同一类同一时间只能有一个进行中，不同类可以并行 */
-export type ChallengeCategory = 'fullstar' | 'signin'
+export type ChallengeCategory = 'fullstar' | 'signin' | 'active'
 
 export interface ChallengeSpec {
   kind: ChallengeKind
@@ -455,8 +455,8 @@ export interface ChallengeCurrent {
   reward_card_label: string
   /** 本次读取刚判成功（用于弹一次庆祝；下次读取回到 false） */
   just_succeeded: boolean
-  /** 该类失败补救要买的卡（按类选：满星→补满星卡，签到→补签卡）；没上架则 null */
-  retro_card_item: { id: string; name: string; price: number; kind: string } | null
+  /** 该类失败补救要买的卡（按类选：满星→补满星卡，签到→补签卡，活跃→补活跃卡）；没上架则 null */
+  retro_card_item: { id: string; name: string; price: number; kind: RetroCardKind } | null
 }
 
 export interface ChallengeState {
