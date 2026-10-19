@@ -6,7 +6,7 @@
 --   rule = {"kind":"...", "threshold":N, "dimension":"..."}
 --     total_completions  累计完成任务数
 --     total_checkins     累计打卡次数
---     total_points       当前积分余额
+--     total_points       累计获取积分（所有正向流水之和，不随消费而减少）
 --     total_signin       累计签到天数
 --     total_active       累计活跃天数
 --     total_fullstar     累计满星天数
@@ -181,7 +181,9 @@ begin
       select count(*)::int into v_prog from app.checkins c where c.member_id = m.id;
 
     elsif v_kind = 'total_points' then
-      v_prog := m.points_balance;
+      -- 累计获取的积分数 = 所有正向流水（流入）之和，不随消费/兑换而减少
+      select coalesce(sum(delta), 0)::int into v_prog
+        from app.point_ledger where member_id = m.id and delta > 0;
 
     elsif v_kind = 'total_signin' then
       select count(*)::int into v_prog from app.member_day d

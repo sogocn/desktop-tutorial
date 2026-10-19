@@ -2,9 +2,9 @@
 -- test_active_challenge_027.sql —— 连续活跃挑战（027）
 -- =============================================================================
 -- 覆盖：
---   V1 规格：活跃21 入场7/奖励33/窗口21/达标20/容错1/奖励卡retro_active/类active
---           活跃45 入场10/奖励100/窗口45/达标42/容错3
---   V2 判定维度=active：凑满 20 天活跃 → succeeded +33 分 + 补活跃卡×1
+--   V1 规格：活跃21 入场7/奖励60/窗口21/达标20/容错1/奖励卡retro_active/类active
+--           活跃45 入场10/奖励200/窗口45/达标42/容错3
+--   V2 判定维度=active：凑满 20 天活跃 → succeeded +60 分 + 补活跃卡×1
 --   V3 失败补救：漏 2 天（>容错1）→ failing；买补活跃卡补掉那天 → 挑战恢复
 --   V4 补救卡选型：活跃类的 retro_card_item.kind = retro_active（不是 retro_signin/fullstar）
 --   V5 同类互斥：活跃类进行中 → 再开活跃类被拒（CHALLENGE_ACTIVE）
@@ -50,13 +50,13 @@ begin
   v_state := app.challenge_state();
   assert (v_state->'specs'->4->>'kind') = 'active_21', 'V1 应有活跃21规格';
   assert (v_state->'specs'->4->>'entry_fee')::int = 7, format('V1 活跃21入场应为7，实际 %s', v_state->'specs'->4->>'entry_fee');
-  assert (v_state->'specs'->4->>'reward_points')::int = 33, format('V1 活跃21奖励应为33，实际 %s', v_state->'specs'->4->>'reward_points');
+  assert (v_state->'specs'->4->>'reward_points')::int = 60, format('V1 活跃21奖励应为60，实际 %s', v_state->'specs'->4->>'reward_points');
   assert (v_state->'specs'->4->>'reward_card') = 'retro_active', 'V1 活跃21奖励卡应为补活跃卡';
   assert (v_state->'specs'->4->>'category') = 'active', 'V1 活跃21类应为active';
   assert (v_state->'specs'->4->>'category_label') = '连续活跃', 'V1 活跃21类文案应为连续活跃';
   assert (v_state->'specs'->5->>'entry_fee')::int = 10, 'V1 活跃45入场应为10';
-  assert (v_state->'specs'->5->>'reward_points')::int = 100, 'V1 活跃45奖励应为100';
-  raise notice '✓ V1 规格：活跃21(7/33) 活跃45(10/100)，类=active，奖励卡=retro_active';
+  assert (v_state->'specs'->5->>'reward_points')::int = 200, 'V1 活跃45奖励应为200';
+  raise notice '✓ V1 规格：活跃21(7/60) 活跃45(10/200)，类=active，奖励卡=retro_active';
 
   -- V2 判定走 active：开活跃21 → 凑满 20 天活跃 → 成功 +33 + 补活跃卡
   v_state := app.start_challenge('active_21');          -- 500 - 7 = 493
@@ -72,16 +72,16 @@ begin
     format('V2 应 succeeded，实际 %s', v_state->'currents'->0->>'status');
   assert (v_state->'currents'->0->>'fullstar_days')::int = 20, 'V2 应活跃20天';
   select points_balance into v_bal from app.members where id = v_child;
-  assert v_bal = 526, format('V2 成功后应526（493+33），实际 %s', v_bal);
+  assert v_bal = 553, format('V2 成功后应553（493+60），实际 %s', v_bal);
   select coalesce(qty, 0)::int into v_n from app.member_cards
    where member_id = v_child and kind = 'retro_active';
   assert v_n = 1, format('V2 应得补活跃卡1张，实际 %s', v_n);
-  raise notice '✓ V2 活跃判定=active：凑满20天 → succeeded +33 +补活跃卡';
+  raise notice '✓ V2 活跃判定=active：凑满20天 → succeeded +60 +补活跃卡';
 
   -- V3 失败补救：漏 2 天 → failing；补活跃卡补掉那天 → 恢复
   -- （清掉 V2 留下的活跃记录，否则近 20 天全已活跃，漏天数算不出来）
   delete from app.member_day where member_id = v_child;
-  perform app.start_challenge('active_21');             -- 526 - 7 = 519
+  perform app.start_challenge('active_21');             -- 553 - 7 = 546
   update app.challenges
      set started_on = v_today - 4, ends_on = v_today + 16
    where member_id = v_child and category = 'active' and status = 'active';
@@ -122,7 +122,7 @@ begin
   raise notice '✓ V5 同类互斥：活跃21 vs 活跃45';
 
   -- V6 跨类并行：再开签到类（不同类）→ currents 两条
-  perform app.start_challenge('signin_21');             -- 519 - 7 = 512
+  perform app.start_challenge('signin_21');             -- 546 - 7 = 539
   v_state := app.challenge_state();
   assert jsonb_array_length(v_state->'currents') = 2,
     format('V6 应有2类各一条，实际 %s', v_state->'currents');
